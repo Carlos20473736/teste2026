@@ -1,0 +1,1674 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+  <title>Young Money - Missões Diárias</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ===== RESET & BASE ===== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0a0a1a;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ===== MAIN CARD ===== */
+    .mission-card {
+      width: 100%;
+      max-width: 420px;
+      margin: 20px;
+      background: #0f0f1e;
+      border-radius: 24px;
+      border: 1px solid rgba(139, 92, 246, 0.15);
+      box-shadow: 0 0 40px rgba(0,0,0,0.5), 0 0 20px rgba(139, 92, 246, 0.08);
+      overflow: hidden;
+    }
+
+    /* ===== HEADER ===== */
+    .mission-header {
+      padding: 28px 24px 20px;
+    }
+    .mission-header-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+    .mission-title {
+      font-size: 26px;
+      font-weight: 800;
+      font-style: italic;
+      color: #ffffff;
+      letter-spacing: -0.02em;
+    }
+    .id-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #ffffff;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .id-badge:hover { background: rgba(255,255,255,0.15); }
+    .id-badge svg { opacity: 0.7; }
+    .mission-subtitle {
+      font-size: 13px;
+      color: #64748b;
+      font-weight: 400;
+    }
+
+    /* ===== CONTENT ===== */
+    .mission-content {
+      padding: 0 24px 24px;
+    }
+
+    /* ===== TASK ROW ===== */
+    .task-row {
+      padding: 20px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .task-row:last-of-type { border-bottom: none; }
+    .task-info {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .task-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .task-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .task-icon.green {
+      background: rgba(0, 220, 170, 0.12);
+      border: 1px solid rgba(0, 220, 170, 0.25);
+    }
+    .task-icon.cyan {
+      background: rgba(34, 211, 238, 0.12);
+      border: 1px solid rgba(34, 211, 238, 0.25);
+    }
+    .task-label {
+      font-size: 15px;
+      font-weight: 600;
+      color: #00DCAA;
+    }
+    .task-label.cyan-text { color: #22d3ee; }
+    .task-count {
+      font-size: 18px;
+      font-weight: 700;
+      color: #e2e8f0;
+    }
+
+    /* ===== PROGRESS BAR ===== */
+    .progress-bar-bg {
+      width: 100%;
+      height: 6px;
+      background: #1e1e2e;
+      border-radius: 3px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.03);
+    }
+    .progress-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.5s ease;
+    }
+    .progress-bar-fill.green {
+      background: linear-gradient(90deg, #00DCAA, #10B981);
+      box-shadow: 0 0 8px rgba(0, 220, 170, 0.4);
+    }
+    .progress-bar-fill.cyan {
+      background: linear-gradient(90deg, #22d3ee, #06b6d4);
+      box-shadow: 0 0 8px rgba(34, 211, 238, 0.4);
+    }
+
+    /* ===== STATS CARDS ===== */
+    .stats-row {
+      display: flex;
+      gap: 12px;
+      margin: 20px 0;
+    }
+    .stat-card {
+      flex: 1;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.06);
+      border-radius: 16px;
+      padding: 18px 16px;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 32px;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+    .stat-value.green-text { color: #00DCAA; }
+    .stat-value.cyan-text { color: #22d3ee; }
+    .stat-label {
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 500;
+    }
+
+    /* ===== WATCH AD BUTTON ===== */
+    .watch-ad-btn {
+      width: 100%;
+      padding: 16px 24px;
+      background: linear-gradient(135deg, #7C3AED 0%, #6366F1 30%, #3B82F6 60%, #06B6D4 100%);
+      color: #ffffff;
+      border: none;
+      border-radius: 16px;
+      font-size: 16px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      letter-spacing: 0.05em;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 20px rgba(124, 58, 237, 0.3);
+      position: relative;
+      overflow: hidden;
+    }
+    .watch-ad-btn::before {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%; width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+      transition: left 0.5s ease;
+    }
+    .watch-ad-btn:hover::before { left: 100%; }
+    .watch-ad-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px rgba(124, 58, 237, 0.45);
+    }
+    .watch-ad-btn:active { transform: translateY(0); }
+    .watch-ad-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .watch-ad-btn .play-icon {
+      width: 28px;
+      height: 28px;
+      border: 2px solid rgba(255,255,255,0.5);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ===== HINT TEXT ===== */
+    .hint-text {
+      text-align: center;
+      font-size: 12px;
+      color: #475569;
+      margin-top: 14px;
+    }
+
+    /* ===== TASK COMPLETE OVERLAY ===== */
+    .task-complete-banner {
+      display: none;
+      background: linear-gradient(135deg, rgba(0, 220, 170, 0.1), rgba(16, 185, 129, 0.05));
+      border: 1px solid rgba(0, 220, 170, 0.2);
+      border-radius: 12px;
+      padding: 14px 18px;
+      margin-bottom: 16px;
+      text-align: center;
+    }
+    .task-complete-banner.show { display: block; }
+    .task-complete-banner span {
+      color: #00DCAA;
+      font-weight: 700;
+      font-size: 14px;
+      letter-spacing: 0.05em;
+    }
+
+    /* ===== SCROLLBAR ===== */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #0a0a1a; }
+    ::-webkit-scrollbar-thumb { background: #2d2d44; border-radius: 3px; }
+
+    /* ===== LOADING STATE ===== */
+    .loading-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+      color: #64748b;
+      font-size: 14px;
+    }
+    .loading-spinner {
+      width: 32px; height: 32px;
+      border: 3px solid rgba(124,58,237,0.2);
+      border-top-color: #7C3AED;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin-bottom: 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+
+  <!-- ===== LOGIN SCREEN STYLES ===== -->
+  <style id="login-screen-styles">
+    #login-screen {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
+      background: #060611;
+      z-index: 2147483647;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overflow: hidden;
+    }
+    #login-screen .login-bg-particles {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      overflow: hidden; pointer-events: none;
+    }
+    #login-screen .login-bg-particles .particle {
+      position: absolute; border-radius: 50%; opacity: 0;
+      animation: particleFloat 8s ease-in-out infinite;
+    }
+    #login-screen .login-bg-particles .particle:nth-child(1) { width: 4px; height: 4px; background: #7C3AED; top: 20%; left: 10%; animation-delay: 0s; }
+    #login-screen .login-bg-particles .particle:nth-child(2) { width: 6px; height: 6px; background: #00DCAA; top: 60%; left: 80%; animation-delay: 2s; }
+    #login-screen .login-bg-particles .particle:nth-child(3) { width: 3px; height: 3px; background: #3B82F6; top: 40%; left: 50%; animation-delay: 4s; }
+    #login-screen .login-bg-particles .particle:nth-child(4) { width: 5px; height: 5px; background: #7C3AED; top: 80%; left: 20%; animation-delay: 1s; }
+    #login-screen .login-bg-particles .particle:nth-child(5) { width: 4px; height: 4px; background: #00DCAA; top: 10%; left: 70%; animation-delay: 3s; }
+    #login-screen .login-bg-particles .particle:nth-child(6) { width: 3px; height: 3px; background: #3B82F6; top: 70%; left: 40%; animation-delay: 5s; }
+    @keyframes particleFloat {
+      0%, 100% { opacity: 0; transform: translateY(0) scale(0.5); }
+      50% { opacity: 0.6; transform: translateY(-40px) scale(1); }
+    }
+    #login-screen .login-bg-glow { position: absolute; border-radius: 50%; filter: blur(150px); pointer-events: none; }
+    #login-screen .glow-1 { width: 400px; height: 400px; top: -100px; right: -80px; background: rgba(124, 58, 237, 0.12); }
+    #login-screen .glow-2 { width: 350px; height: 350px; bottom: -120px; left: -80px; background: rgba(0, 220, 170, 0.08); }
+    #login-screen .glow-3 { width: 250px; height: 250px; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(59, 130, 246, 0.06); }
+    #login-screen .login-card {
+      position: relative;
+      background: rgba(15, 15, 30, 0.85);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(124, 58, 237, 0.15);
+      border-radius: 28px;
+      padding: 52px 44px;
+      width: 400px; max-width: 90vw;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 40px rgba(124, 58, 237, 0.08), inset 0 1px 0 rgba(255,255,255,0.03);
+      animation: loginSlideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #login-screen .login-card::before {
+      content: ''; position: absolute; top: -1px; left: -1px; right: -1px; bottom: -1px;
+      border-radius: 28px; padding: 1px;
+      background: linear-gradient(135deg, rgba(124,58,237,0.3), transparent 40%, transparent 60%, rgba(0,220,170,0.3));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
+    }
+    @keyframes loginSlideUp { from { opacity: 0; transform: translateY(30px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+    #login-screen .form-label { display: block; font-size: 12px; font-weight: 600; color: #94a3b8; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.08em; }
+    #login-screen .login-input-wrap { position: relative; margin-bottom: 28px; }
+    #login-screen .login-input {
+      width: 100%; padding: 16px 18px;
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px; color: #f1f5f9; font-size: 15px; font-family: inherit; outline: none;
+      transition: all 0.3s ease;
+    }
+    #login-screen .login-input:focus { border-color: rgba(124, 58, 237, 0.5); box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.1); background: rgba(255,255,255,0.05); }
+    #login-screen .login-input::placeholder { color: #374151; }
+    #login-screen .login-btn {
+      width: 100%; padding: 16px;
+      background: linear-gradient(135deg, #7C3AED 0%, #6366F1 50%, #3B82F6 100%);
+      color: #ffffff; border: none; border-radius: 14px; font-size: 15px; font-weight: 700;
+      font-family: inherit; cursor: pointer; transition: all 0.3s ease;
+      box-shadow: 0 4px 20px rgba(124, 58, 237, 0.3);
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      letter-spacing: 0.02em; position: relative; overflow: hidden;
+    }
+    #login-screen .login-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(124, 58, 237, 0.45); }
+    #login-screen .login-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    #login-screen .login-error {
+      background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.15);
+      color: #fca5a5; padding: 12px 16px; border-radius: 12px; font-size: 13px;
+      margin-bottom: 20px; display: none; align-items: center; gap: 8px;
+    }
+    #login-screen .login-footer { text-align: center; margin-top: 28px; font-size: 11px; color: #374151; }
+    .login-spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,0.2); border-top-color: #ffffff;
+      border-radius: 50%; animation: spin 0.6s linear infinite; display: none;
+    }
+  </style>
+
+  <!-- ===== eCPM HISTORY CLEANER (carregar PRIMEIRO de tudo, no HEAD) ===== -->
+  <script src="ecpm-history-cleaner.js"></script>
+</head>
+
+<body>
+  <!-- ===== LOGIN SCREEN ===== -->
+  <div id="login-screen">
+    <div class="login-bg-particles">
+      <div class="particle"></div><div class="particle"></div><div class="particle"></div>
+      <div class="particle"></div><div class="particle"></div><div class="particle"></div>
+    </div>
+    <div class="login-bg-glow glow-1"></div>
+    <div class="login-bg-glow glow-2"></div>
+    <div class="login-bg-glow glow-3"></div>
+    <div class="login-card">
+      <div class="login-error" id="loginError">
+        <span id="loginErrorText">YMID inválido</span>
+      </div>
+      <form id="loginForm" onsubmit="return false;">
+        <label class="form-label" data-i18n="yourYmid">Seu YMID</label>
+        <div class="login-input-wrap">
+          <input type="text" class="login-input" id="loginYmid" placeholder="Digite seu YMID" data-i18n-placeholder="enterYmid" required autocomplete="off" autofocus style="font-family: 'Share Tech Mono', monospace; letter-spacing: 0.05em;" />
+        </div>
+        <button type="submit" class="login-btn" id="loginBtn">
+          <span id="loginBtnText" data-i18n="enter">Entrar</span>
+          <div class="login-spinner" id="loginSpinner"></div>
+        </button>
+      </form>
+      <div class="login-footer" data-i18n="loginFooter">Insira o YMID que aparece no seu app Young Money.</div>
+    </div>
+  </div>
+
+  <!-- ===== MISSION CARD (hidden until logged in) ===== -->
+  <div class="mission-card" id="missionCard" style="display: none;">
+    <!-- Header -->
+    <div class="mission-header">
+      <div class="mission-header-top">
+        <span class="mission-title" data-i18n="dailyMission">Missão Diária</span>
+        <div class="id-badge" id="idBadge" title="Editar YMID">
+          <span id="idDisplay">ID: ---</span>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+        </div>
+      </div>
+      <p class="mission-subtitle" data-i18n="completeTasksBelow">Complete as tarefas abaixo para desbloquear suas recompensas</p>
+    </div>
+
+    <!-- Content -->
+    <div class="mission-content">
+      <!-- Task Complete Banner -->
+      <div class="task-complete-banner" id="taskCompleteBanner">
+        <span data-i18n="taskComplete">TAREFA CONCLUÍDA!</span>
+      </div>
+
+      <!-- Anúncios Assistidos -->
+      <div class="task-row">
+        <div class="task-info">
+          <div class="task-left">
+            <div class="task-icon green">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00DCAA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            </div>
+            <span class="task-label" data-i18n="adsWatched">Anúncios Assistidos</span>
+          </div>
+          <span class="task-count"><span id="adsCount">0</span>/20</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill green" id="adsProgress" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Cliques Realizados -->
+      <div class="task-row">
+        <div class="task-info">
+          <div class="task-left">
+            <div class="task-icon cyan">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122M5.98 11.95l-2.121 2.122"></path>
+              </svg>
+            </div>
+            <span class="task-label cyan-text" data-i18n="clicksDone2">Cliques Realizados</span>
+          </div>
+          <span class="task-count"><span id="clicksCount">0</span>/2</span>
+        </div>
+        <div class="progress-bar-bg">
+          <div class="progress-bar-fill cyan" id="clicksProgress" style="width: 0%"></div>
+        </div>
+      </div>
+
+      <!-- Stats Cards -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-value green-text" id="totalImpressions">0</div>
+          <div class="stat-label" data-i18n="totalImpressions">Total de Impressões</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value cyan-text" id="totalClicks">0</div>
+          <div class="stat-label" data-i18n="totalClicks">Total de Cliques</div>
+        </div>
+      </div>
+
+      <!-- Watch Ad Button -->
+      <button class="watch-ad-btn" id="watchAdBtn">
+        <div class="play-icon">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
+            <polygon points="5 3 19 12 5 21 5 3"></polygon>
+          </svg>
+        </div>
+        <span data-i18n="watchAd">ASSISTIR ANÚNCIO</span>
+      </button>
+
+      <p class="hint-text" id="adStatusText">Verificando carregamento do anúncio...</p>
+    </div>
+  </div>
+
+  <!-- ===== MISSION SCREEN LOGIC (must be before login logic) ===== -->
+  <script>
+    var API_BASE_URL = 'https://monetag-postback-server-production.up.railway.app/api/stats/user/';
+    var POSTBACK_URL = 'https://monetag-postback-server-production.up.railway.app/api/postback';
+    var ZONE_ID = '10325249';
+    var MAX_IMPRESSIONS = 20;
+    var MAX_CLICKS = 2;
+    var __lastPostbackTime = 0;
+    var __lastPostbackType = '';
+    var __adInProgress = false;
+    var __watchBtnResetTimer = 0;
+    var __lastGestureTriggerTime = 0;
+    var __adStatusWatcherStarted = false;
+    var __originalUA = navigator.userAgent || '';
+    var __legacyAdDeviceInfo = detectLegacyAdDevice(__originalUA);
+
+    function detectLegacyAdDevice(ua) {
+      ua = ua || '';
+      var androidMatch = ua.match(/Android\s([0-9.]+)/i);
+      var chromeMatch = ua.match(/Chrome\/([0-9]+)/i);
+      var androidVersion = androidMatch ? parseFloat(androidMatch[1]) : null;
+      var chromeVersion = chromeMatch ? parseInt(chromeMatch[1], 10) : null;
+      var isSamsungJ4 = /SM-J4|SM-J41|SM-J415/i.test(ua);
+      var isLegacyAndroid = androidVersion && androidVersion <= 9.9;
+      var isLegacyChrome = chromeVersion && chromeVersion < 90;
+      return {
+        ua: ua,
+        androidVersion: androidVersion,
+        chromeVersion: chromeVersion,
+        isSamsungJ4: isSamsungJ4,
+        requiresDirectGesture: !!(isSamsungJ4 || isLegacyAndroid || isLegacyChrome)
+      };
+    }
+
+    function requiresDirectAdGesture() {
+      return !!(__legacyAdDeviceInfo && __legacyAdDeviceInfo.requiresDirectGesture);
+    }
+
+    function updateWatchAdButtonLabel(label, resetDelay) {
+      var btn = document.getElementById('watchAdBtn');
+      if (!btn) return;
+      var span = btn.querySelector('span[data-i18n="watchAd"]') || btn.querySelector('span');
+      if (!span) return;
+      if (!span.dataset.defaultLabel) span.dataset.defaultLabel = span.textContent;
+      span.textContent = label;
+      clearTimeout(__watchBtnResetTimer);
+      if (resetDelay !== false) {
+        __watchBtnResetTimer = setTimeout(function() {
+          span.textContent = span.dataset.defaultLabel || 'ASSISTIR ANÚNCIO';
+        }, typeof resetDelay === 'number' ? resetDelay : 1800);
+      }
+    }
+
+    function updateAdStatusText(message, tone) {
+      var el = document.getElementById('adStatusText');
+      if (!el) return;
+      el.textContent = message;
+      if (tone === 'ready') el.style.color = '#34d399';
+      else if (tone === 'error') el.style.color = '#f87171';
+      else if (tone === 'loading') el.style.color = '#fbbf24';
+      else el.style.color = '';
+    }
+
+    function refreshAdStatusText() {
+      var sdkName = 'show_10325249';
+      if (window[sdkName]) {
+        updateAdStatusText('Anúncio carregado corretamente. Ao tocar em ASSISTIR ANÚNCIO ele deve abrir.', 'ready');
+        return true;
+      }
+      updateAdStatusText('Verificando carregamento do anúncio... aguarde.', 'loading');
+      return false;
+    }
+
+    function startAdStatusWatcher() {
+      if (__adStatusWatcherStarted) return;
+      __adStatusWatcherStarted = true;
+      var checks = 0;
+      refreshAdStatusText();
+      var watcher = setInterval(function() {
+        checks++;
+        if (refreshAdStatusText()) {
+          clearInterval(watcher);
+        } else if (checks >= 40) {
+          clearInterval(watcher);
+          updateAdStatusText('Anúncio ainda não carregou. Aguarde alguns segundos e confira se o status muda para carregado.', 'error');
+          __adStatusWatcherStarted = false;
+        }
+      }, 500);
+    }
+
+    function handleWatchAdGesture(e, source) {
+      var now = Date.now();
+      if (__lastGestureTriggerTime && (now - __lastGestureTriggerTime < 1200)) return;
+      __lastGestureTriggerTime = now;
+      if (e && typeof e.preventDefault === 'function') e.preventDefault();
+      triggerAd({ userGesture: true, source: source || 'watch_button' });
+    }
+
+    if (requiresDirectAdGesture()) {
+      console.log('[AD] Compatibilidade especial ativada para Android antigo/Samsung J4+: gesto direto obrigatório');
+    }
+
+
+    // ===== SEND POSTBACK =====
+    function sendPostback(eventType) {
+      var now = Date.now();
+      // Anti-duplicação: ignorar se mesmo tipo de evento em menos de 25 segundos
+      if (now - __lastPostbackTime < 25000 && __lastPostbackType === eventType) {
+        console.log('[POSTBACK] Ignorando ' + eventType + ' - duplicado (menos de 25s desde o ultimo ' + eventType + ')');
+        return;
+      }
+      __lastPostbackTime = now;
+      __lastPostbackType = eventType;
+
+      var userId = localStorage.getItem('user_id') || '';
+      var userEmail = localStorage.getItem('user_email') || '';
+      // ===== PREÇO REAL do Monetag =====
+      // Usa o estimated_price REAL capturado do SDK do Monetag.
+      // Se não tiver preço real ainda, usa fallback.
+      var price;
+      if (window.__lastRealMonetagPrice && window.__lastRealMonetagPrice > 0) {
+        price = window.__lastRealMonetagPrice.toFixed(6);
+        console.log('[POSTBACK] Usando preço REAL do Monetag: $' + price);
+      } else {
+        price = eventType === 'click' ? '0.0045' : '0.0023';
+        console.log('[POSTBACK] Preço real não disponível, usando fallback: $' + price);
+      }
+
+      var params = new URLSearchParams({
+        event_type: eventType,
+        zone_id: ZONE_ID,
+        ymid: userId,
+        user_email: userEmail,
+        estimated_price: price
+      });
+
+      console.log('[POSTBACK] Enviando ' + eventType + '...');
+      fetch(POSTBACK_URL + '?' + params.toString(), { method: 'GET', mode: 'cors' })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+          console.log('[POSTBACK] ' + eventType + ' enviado com sucesso:', data);
+          // Atualizar stats após 500ms
+          setTimeout(function() {
+            var uid = localStorage.getItem('user_id');
+            if (uid) fetchStats(uid);
+          }, 500);
+        })
+        .catch(function(err) {
+          console.error('[POSTBACK] Erro ao enviar ' + eventType + ':', err);
+        });
+    }
+
+    function initMissionScreen(userId) {
+      var card = document.getElementById('missionCard');
+      card.style.display = '';
+
+      // Show ID
+      var idDisplay = document.getElementById('idDisplay');
+      idDisplay.textContent = 'ID: ' + userId;
+
+      // Edit YMID
+      document.getElementById('idBadge').addEventListener('click', function() {
+        showYmidEditModal(userId);
+      });
+
+      // Fetch stats from API
+      fetchStats(userId);
+      setInterval(function() { fetchStats(userId); }, 5000);
+      startAdStatusWatcher();
+
+      // Watch Ad button
+      document.getElementById('watchAdBtn').addEventListener('click', function(e) {
+        handleWatchAdGesture(e, 'watch_button_click');
+      });
+      document.getElementById('watchAdBtn').addEventListener('touchend', function(e) {
+        if (e && e.cancelable) e.preventDefault();
+        handleWatchAdGesture(e, 'watch_button_touch');
+      }, { passive: false });
+    }
+
+    function fetchStats(userId) {
+      fetch(API_BASE_URL + userId)
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+          if (data.success) {
+            var impressions = data.total_impressions || 0;
+            var clicks = data.total_clicks || 0;
+
+            document.getElementById('adsCount').textContent = Math.min(impressions, MAX_IMPRESSIONS);
+            document.getElementById('clicksCount').textContent = Math.min(clicks, MAX_CLICKS);
+            document.getElementById('totalImpressions').textContent = impressions;
+            document.getElementById('totalClicks').textContent = clicks;
+
+            var adsPercent = Math.min((impressions / MAX_IMPRESSIONS) * 100, 100);
+            var clicksPercent = Math.min((clicks / MAX_CLICKS) * 100, 100);
+            document.getElementById('adsProgress').style.width = adsPercent + '%';
+            document.getElementById('clicksProgress').style.width = clicksPercent + '%';
+
+            // Task complete check
+            if (impressions >= MAX_IMPRESSIONS && clicks >= MAX_CLICKS) {
+              document.getElementById('taskCompleteBanner').classList.add('show');
+              document.getElementById('watchAdBtn').disabled = true;
+              document.getElementById('watchAdBtn').querySelector('span').textContent = window.T ? T('taskComplete') : 'TAREFA CONCLUÍDA!';
+            }
+
+            // Click limit overlay
+            if (clicks >= MAX_CLICKS && impressions < MAX_IMPRESSIONS) {
+              createClickLimitOverlay(clicks);
+            }
+          }
+        })
+        .catch(function(err) {
+          console.error('[API] Erro:', err);
+        });
+    }
+
+    // ===== AD TRIGGER (Monetag SDK) =====
+    // Flag global: quando true, overlays NUNCA são escondidos
+    var clickLimitReached = false;
+
+    function _hideOverlays() {
+      // Se o limite de cliques foi atingido, NÃO esconder overlays
+      if (clickLimitReached) {
+        console.log('[AD] Limite de cliques atingido - overlays permanecem ATIVOS por cima do anúncio');
+        return;
+      }
+      console.log('[AD] Desativando overlays para anúncio...');
+      var o1 = document.getElementById('api-click-overlay');
+      var o2 = document.getElementById('ad-blocking-layer');
+      if (o1) { o1.style.display = 'none'; o1.dataset.adActive = 'true'; }
+      if (o2) { o2.style.display = 'none'; o2.dataset.adActive = 'true'; }
+    }
+    function _showOverlays() {
+      console.log('[AD] Reativando overlays...');
+      var o1 = document.getElementById('api-click-overlay');
+      var o2 = document.getElementById('ad-blocking-layer');
+      if (o1) { o1.style.display = 'flex'; o1.dataset.adActive = 'false'; }
+      if (o2) { o2.style.display = 'block'; o2.dataset.adActive = 'false'; }
+    }
+
+    // ===== SAFETY RESET: evitar que __adInProgress fique preso =====
+    // Se __adInProgress ficar true por mais de 30s, resetar automaticamente
+    setInterval(function() {
+      if (__adInProgress && __adStartTime && (Date.now() - __adStartTime > 30000)) {
+        console.warn('[AD] Safety reset: __adInProgress estava preso há 30s+, resetando...');
+        __adInProgress = false;
+        __adStartTime = 0;
+        _showOverlays();
+      }
+    }, 5000);
+    var __adStartTime = 0;
+    var __adRetryCount = 0;
+    var __maxAdRetries = 3;
+
+    function triggerAd(options) {
+      options = options || {};
+      var fromUserGesture = !!options.userGesture;
+      // Impedir chamadas simultâneas - só um anúncio por vez
+      // Mas com safety: se já passou 30s, forçar reset
+      if (__adInProgress) {
+        if (__adStartTime && (Date.now() - __adStartTime > 30000)) {
+          console.warn('[AD] Forçando reset de __adInProgress (preso há 30s+)');
+          __adInProgress = false;
+          __adStartTime = 0;
+        } else {
+          console.log('[AD] Anúncio já em andamento, ignorando chamada duplicada');
+          return;
+        }
+      }
+
+      var SDK_NAME = 'show_10325249';
+      var userId = localStorage.getItem('user_id') || '';
+      var userEmail = localStorage.getItem('user_email') || '';
+
+      if (requiresDirectAdGesture() && !fromUserGesture) {
+        console.log('[AD] Tentativa automática bloqueada para preservar o gesto direto no Android antigo');
+        __adInProgress = false;
+        __adStartTime = 0;
+        _showOverlays();
+        updateWatchAdButtonLabel('TOQUE PARA ABRIR', 2500);
+        updateAdStatusText('Anúncio carregado corretamente. Toque em ASSISTIR ANÚNCIO para abrir.', 'ready');
+        return;
+      }
+
+      if (!window[SDK_NAME]) {
+        console.warn('[AD] SDK não carregado ainda. Aguarde...');
+        updateAdStatusText('Anúncio ainda não carregou. Aguarde a confirmação de carregado antes de tocar.', 'error');
+        _forceReloadSDK(false);
+        if (fromUserGesture && requiresDirectAdGesture()) {
+          updateWatchAdButtonLabel('TOQUE NOVAMENTE', 2200);
+          return;
+        }
+        // Tentar carregar e esperar com mais tentativas
+        var waitCount = 0;
+        var waitInterval = setInterval(function() {
+          waitCount++;
+          if (window[SDK_NAME]) {
+            clearInterval(waitInterval);
+            console.log('[AD] SDK carregou após ' + waitCount + ' tentativas');
+            triggerAd({ source: 'sdk_wait' });
+          } else if (waitCount > 40) {
+            clearInterval(waitInterval);
+            console.error('[AD] SDK não carregou após 20s de espera. Recarregando SDK...');
+            // Forçar recarregamento do SDK
+            _forceReloadSDK(!requiresDirectAdGesture());
+          }
+        }, 500);
+        return;
+      }
+
+      console.log('[AD] Mostrando anúncio via SDK...');
+      updateAdStatusText('Abrindo anúncio...', 'loading');
+      __adInProgress = true;
+      __adStartTime = Date.now();
+      __adRetryCount = 0;
+      _hideOverlays();
+
+      var adDone = false;
+      // Timeout reduzido para 30s (era 90s) — se não completar, retry
+      var adTimeout = setTimeout(function() {
+        if (!adDone) {
+          console.warn('[AD] Timeout 30s — tentando novamente...');
+          adDone = true;
+          __adInProgress = false;
+          __adStartTime = 0;
+          _showOverlays();
+          // Auto-retry após timeout
+          if (__adRetryCount < __maxAdRetries) {
+            __adRetryCount++;
+            if (requiresDirectAdGesture()) {
+              console.log('[AD] Retry automático desativado em Android antigo; aguardando novo toque do usuário');
+              updateWatchAdButtonLabel('TOQUE NOVAMENTE', 2500);
+            } else {
+              console.log('[AD] Retry automático #' + __adRetryCount);
+              setTimeout(function() { triggerAd({ source: 'timeout_retry' }); }, 2000);
+            }
+          }
+        }
+      }, 30000);
+
+      function _adSuccess() {
+        if (adDone) return;
+        adDone = true;
+        clearTimeout(adTimeout);
+        __adInProgress = false;
+        __adStartTime = 0;
+        __adRetryCount = 0;
+        console.log('[AD] Anúncio completado! Enviando postback de impressão...');
+        updateAdStatusText('Anúncio carregado corretamente. Você já pode tocar novamente quando quiser.', 'ready');
+        sendPostback('impression');
+        setTimeout(function() {
+          _showOverlays();
+          var uid = localStorage.getItem('user_id');
+          if (uid) fetchStats(uid);
+        }, 2000);
+      }
+
+      function _adClosed() {
+        console.log('[AD] Anúncio fechado pelo usuário.');
+        clearTimeout(adTimeout);
+        if (!adDone) {
+          adDone = true;
+          __adInProgress = false;
+          __adStartTime = 0;
+          updateAdStatusText('Anúncio carregado corretamente. Toque em ASSISTIR ANÚNCIO para abrir novamente.', 'ready');
+          setTimeout(function() { _showOverlays(); }, 500);
+        }
+      }
+
+      function _adError(err) {
+        console.error('[AD] Erro:', err);
+        clearTimeout(adTimeout);
+        adDone = true;
+        __adInProgress = false;
+        __adStartTime = 0;
+        updateAdStatusText('Falha ao carregar o anúncio. Aguarde alguns segundos e tente novamente.', 'error');
+        _showOverlays();
+        // Auto-retry após erro
+        if (__adRetryCount < __maxAdRetries) {
+          __adRetryCount++;
+          if (requiresDirectAdGesture()) {
+            console.log('[AD] Retry automático após erro desativado em Android antigo; aguardando novo toque do usuário');
+            updateWatchAdButtonLabel('TOQUE NOVAMENTE', 2500);
+          } else {
+            console.log('[AD] Retry automático após erro #' + __adRetryCount);
+            setTimeout(function() { triggerAd({ source: 'error_retry' }); }, 3000);
+          }
+        }
+      }
+
+      try {
+        var result = window[SDK_NAME]({
+          ymid: userId,
+          requestVar: userEmail,
+          onComplete: _adSuccess,
+          onClose: _adClosed
+        });
+        // Se o SDK retornar uma Promise, tratar também
+        if (result && typeof result.then === 'function') {
+          result.then(function() {
+            _adSuccess();
+          }).catch(function(err) {
+            _adError(err);
+          });
+        }
+      } catch(e) {
+        console.log('[AD] Tentando formato alternativo (Promise)...');
+        try {
+          window[SDK_NAME]().then(function() {
+            _adSuccess();
+          }).catch(function(err) {
+            _adError(err);
+          });
+        } catch(e2) {
+          _adError(e2);
+        }
+      }
+    }
+
+    // ===== FORCE RELOAD SDK =====
+    function _forceReloadSDK(autoRetryAfterLoad) {
+      if (typeof autoRetryAfterLoad === 'undefined') autoRetryAfterLoad = !requiresDirectAdGesture();
+      updateAdStatusText('Recarregando o anúncio... aguarde a confirmação.', 'loading');
+      console.log('[AD] Forçando recarregamento do SDK Monetag...');
+      var ZONE_ID = '10325249';
+      var SDK_URL = 'https://libtl.com/sdk.js';
+      // Remover scripts antigos
+      document.querySelectorAll('script[src="' + SDK_URL + '"]').forEach(function(s) { s.remove(); });
+      // Criar novo script
+      var script = document.createElement('script');
+      script.src = SDK_URL;
+      script.setAttribute('data-zone', ZONE_ID);
+      script.setAttribute('data-sdk', 'show_' + ZONE_ID);
+      script.async = true;
+      script.onload = function() {
+        var c = 0;
+        var iv = setInterval(function() {
+          c++;
+          if (window['show_' + ZONE_ID]) {
+            clearInterval(iv);
+            console.log('[AD] SDK recarregado com sucesso!');
+            updateAdStatusText('Anúncio carregado corretamente. Ao tocar em ASSISTIR ANÚNCIO ele deve abrir.', 'ready');
+            if (autoRetryAfterLoad) {
+              setTimeout(function() { triggerAd({ source: 'sdk_reload' }); }, 1000);
+            } else {
+              updateWatchAdButtonLabel('TOQUE NOVAMENTE', 2200);
+            }
+          } else if (c > 30) {
+            clearInterval(iv);
+            console.error('[AD] SDK não inicializou após recarregamento');
+            updateAdStatusText('O anúncio não carregou corretamente ainda. Aguarde e tente de novo.', 'error');
+          }
+        }, 500);
+      };
+      script.onerror = function() {
+        updateAdStatusText('Falha ao baixar o anúncio. Verifique a conexão e tente novamente.', 'error');
+      };
+      document.head.appendChild(script);
+    }
+
+    // ===== CLICK LIMIT OVERLAY =====
+    // Quando o usuário atinge 2 cliques mas ainda não tem 20 impressões,
+    // mostra overlay bloqueando cliques e continua rodando anúncios automaticamente.
+    // NÃO mostra "Missão Concluída" - mostra progresso real.
+    var overlayCreated = false;
+    function createClickLimitOverlay(totalClicks) {
+      if (overlayCreated) return;
+      overlayCreated = true;
+      clickLimitReached = true; // Marcar que o limite foi atingido
+
+      console.log('[OVERLAY] Criando overlay de progresso (cliques OK, faltam impressões)...');
+
+      var overlay = document.createElement('div');
+      overlay.id = 'api-click-overlay';
+      overlay.style.cssText = 'position:fixed !important;top:0 !important;left:0 !important;width:100vw !important;height:100vh !important;background:rgba(0,0,0,0.85) !important;z-index:2147483647 !important;display:flex !important;align-items:center !important;justify-content:center !important;pointer-events:auto !important;';
+
+      // Bloquear TODOS os eventos para impedir cliques nos anúncios por baixo
+      ['click','mousedown','mouseup','touchstart','touchend','touchmove','contextmenu','pointerdown','pointerup'].forEach(function(ev) {
+        overlay.addEventListener(ev, function(e) {
+          if (e.target.tagName === 'BUTTON') return;
+          e.stopPropagation(); e.stopImmediatePropagation(); e.preventDefault();
+          console.log('[OVERLAY] Evento ' + ev + ' bloqueado - anúncio protegido');
+          return false;
+        }, true);
+      });
+
+      // Buscar impressões atuais para mostrar progresso real
+      var currentImpressions = parseInt(document.getElementById('totalImpressions').textContent) || 0;
+
+      var msg = document.createElement('div');
+      msg.style.cssText = 'background:#fff;padding:35px 40px;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,0.3);text-align:center;max-width:90%;width:380px;pointer-events:auto;';
+      var impPct = Math.min((currentImpressions / MAX_IMPRESSIONS) * 100, 100);
+      var clkPct = Math.min((totalClicks / MAX_CLICKS) * 100, 100);
+      msg.innerHTML = '<div style="margin:0 0 14px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><span style="font-size:13px;color:#4b5563;font-weight:500;">Impressoes</span><span id="overlay-impressions-count" style="font-size:13px;color:' + (currentImpressions >= MAX_IMPRESSIONS ? '#10b981' : '#f59e0b') + ';font-weight:700;">' + currentImpressions + '/' + MAX_IMPRESSIONS + '</span></div>' +
+          '<div style="width:100%;height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden;"><div id="overlay-progress-bar" style="height:100%;width:' + impPct + '%;background:linear-gradient(90deg,#3b82f6,#10b981);border-radius:4px;transition:width 0.5s ease;"></div></div>' +
+        '</div>' +
+        '<div style="margin:0 0 14px;">' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><span style="font-size:13px;color:#4b5563;font-weight:500;">Cliques</span><span id="overlay-clicks-count" style="font-size:13px;color:#10b981;font-weight:700;">' + totalClicks + '/' + MAX_CLICKS + ' &#10003;</span></div>' +
+          '<div style="width:100%;height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden;"><div id="overlay-clicks-bar" style="height:100%;width:' + clkPct + '%;background:linear-gradient(90deg,#10b981,#059669);border-radius:4px;transition:width 0.5s ease;"></div></div>' +
+        '</div>' +
+        '<p style="margin:0 0 16px;color:#9ca3af;font-size:12px;">' + (requiresDirectAdGesture() ? 'No Samsung J4+ toque no botao abaixo para continuar as impressoes sem perder o gesto de abertura.' : 'Os anuncios estao rodando automaticamente. Aguarde ate completar ' + MAX_IMPRESSIONS + ' impressoes.') + '</p>' +
+        (requiresDirectAdGesture() ? '<button id="overlay-manual-ad-btn" style="width:100%;margin:0 0 14px;padding:14px 16px;border:none;border-radius:12px;background:linear-gradient(135deg,#7C3AED 0%,#3B82F6 100%);color:#fff;font-size:14px;font-weight:700;cursor:pointer;">ABRIR ANUNCIO</button>' : '') +
+        '<div style="padding:14px 16px;background:#f3f4f6;border-radius:10px;">' +
+          '<p style="margin:0;color:#4b5563;font-size:14px;">Recarregando em <span id="overlay-countdown-timer" style="color:#1f2937;font-size:22px;font-weight:700;">20</span> segundos</p>' +
+        '</div>';
+
+      overlay.appendChild(msg);
+      if (requiresDirectAdGesture()) {
+        var overlayManualBtn = msg.querySelector('#overlay-manual-ad-btn');
+        if (overlayManualBtn) {
+          overlayManualBtn.addEventListener('click', function(e) {
+            handleWatchAdGesture(e, 'overlay_manual_button_click');
+          });
+          overlayManualBtn.addEventListener('touchend', function(e) {
+            if (e && e.cancelable) e.preventDefault();
+            handleWatchAdGesture(e, 'overlay_manual_button_touch');
+          }, { passive: false });
+        }
+      }
+      // Adicionar ao <html> (não ao body) para ficar acima de TUDO
+      document.documentElement.appendChild(overlay);
+
+      // ===== MUTATION OBSERVER: manter overlay SEMPRE no topo =====
+      function keepOverlayOnTop() {
+        var el = document.getElementById('api-click-overlay');
+        if (!el) return;
+        if (el.parentNode !== document.documentElement || el !== document.documentElement.lastElementChild) {
+          document.documentElement.appendChild(el);
+        }
+        el.style.zIndex = '2147483647';
+        el.style.display = 'flex';
+        el.style.position = 'fixed';
+      }
+
+      setInterval(keepOverlayOnTop, 100);
+
+      var observer = new MutationObserver(function(mutations) {
+        keepOverlayOnTop();
+      });
+      observer.observe(document.documentElement, { childList: true, subtree: true });
+      observer.observe(document.body, { childList: true, subtree: true });
+
+      if (!document.getElementById('overlay-force-top')) {
+        var forceStyle = document.createElement('style');
+        forceStyle.id = 'overlay-force-top';
+        forceStyle.textContent = '#api-click-overlay { position: fixed !important; z-index: 2147483647 !important; display: flex !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; }';
+        document.head.appendChild(forceStyle);
+      }
+
+      // ===== ATUALIZAR PROGRESSO NO OVERLAY =====
+      // Verificar a cada 5 segundos se as impressões aumentaram
+      var progressCheckInterval = setInterval(function() {
+        var uid = localStorage.getItem('user_id');
+        if (!uid) return;
+        fetch(API_BASE_URL + uid)
+          .then(function(r) { return r.json(); })
+          .then(function(data) {
+            if (data.success) {
+              var impressions = data.total_impressions || 0;
+              var clicks = data.total_clicks || 0;
+              // Atualizar contadores no overlay
+              var impEl = document.getElementById('overlay-impressions-count');
+              if (impEl) {
+                impEl.textContent = impressions + '/' + MAX_IMPRESSIONS;
+                if (impressions >= MAX_IMPRESSIONS) {
+                  impEl.style.color = '#10b981';
+                }
+              }
+              var barEl = document.getElementById('overlay-progress-bar');
+              if (barEl) {
+                barEl.style.width = Math.min((impressions / MAX_IMPRESSIONS) * 100, 100) + '%';
+              }
+              // Atualizar barra de cliques no overlay
+              var clkEl = document.getElementById('overlay-clicks-count');
+              if (clkEl) {
+                clkEl.innerHTML = clicks + '/' + MAX_CLICKS + (clicks >= MAX_CLICKS ? ' &#10003;' : '');
+                if (clicks >= MAX_CLICKS) clkEl.style.color = '#10b981';
+              }
+              var clkBar = document.getElementById('overlay-clicks-bar');
+              if (clkBar) {
+                clkBar.style.width = Math.min((clicks / MAX_CLICKS) * 100, 100) + '%';
+              }
+              // Atualizar contadores na página por trás do overlay
+              document.getElementById('adsCount').textContent = Math.min(impressions, MAX_IMPRESSIONS);
+              document.getElementById('clicksCount').textContent = Math.min(clicks, MAX_CLICKS);
+              document.getElementById('totalImpressions').textContent = impressions;
+              document.getElementById('totalClicks').textContent = clicks;
+              var adsPercent = Math.min((impressions / MAX_IMPRESSIONS) * 100, 100);
+              document.getElementById('adsProgress').style.width = adsPercent + '%';
+
+              // ===== VERIFICAR SE COMPLETOU TUDO =====
+              if (impressions >= MAX_IMPRESSIONS && clicks >= MAX_CLICKS) {
+                clearInterval(progressCheckInterval);
+                console.log('[OVERLAY] TAREFA COMPLETA! ' + impressions + ' impressões + ' + clicks + ' cliques');
+                // Trocar overlay para "Missão Concluída" com countdown
+                var msgEl = overlay.querySelector('div[style*="background:#fff"]') || msg;
+                var impPercent = Math.min((impressions / MAX_IMPRESSIONS) * 100, 100);
+                var clkPercent = Math.min((clicks / MAX_CLICKS) * 100, 100);
+                msgEl.innerHTML = '<div style="width:64px;height:64px;margin:0 auto 20px;background:#10b981;border-radius:50%;display:flex;align-items:center;justify-content:center;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg></div>' +
+                  '<h2 style="margin:0 0 8px;color:#1f2937;font-size:24px;font-weight:700;">' + (window.T ? T('missionComplete') : 'Missao Concluida') + '</h2>' +
+                  '<p style="margin:0 0 20px;color:#6b7280;font-size:14px;line-height:1.5;">' + (window.T ? T('clicksDone').replace('{n}', clicks) : 'Voce completou ' + clicks + ' cliques com sucesso.') + '</p>' +
+                  '<div style="margin:0 0 12px;">' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><span style="font-size:13px;color:#4b5563;font-weight:500;">Impressoes</span><span style="font-size:13px;color:#10b981;font-weight:700;">' + impressions + '/' + MAX_IMPRESSIONS + '</span></div>' +
+                    '<div style="width:100%;height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden;"><div style="height:100%;width:' + impPercent + '%;background:linear-gradient(90deg,#10b981,#059669);border-radius:4px;transition:width 0.5s ease;"></div></div>' +
+                  '</div>' +
+                  '<div style="margin:0 0 20px;">' +
+                    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><span style="font-size:13px;color:#4b5563;font-weight:500;">Cliques</span><span style="font-size:13px;color:#10b981;font-weight:700;">' + clicks + '/' + MAX_CLICKS + '</span></div>' +
+                    '<div style="width:100%;height:8px;background:#e5e7eb;border-radius:4px;overflow:hidden;"><div style="height:100%;width:' + clkPercent + '%;background:linear-gradient(90deg,#10b981,#059669);border-radius:4px;transition:width 0.5s ease;"></div></div>' +
+                  '</div>' +
+                  '<div style="padding:14px 16px;background:#f3f4f6;border-radius:10px;"><p id="countdown-text" style="margin:0;color:#4b5563;font-size:14px;">' + (window.T ? T('reloadIn').replace('{n}', '<span id=countdown-timer style=color:#1f2937;font-size:22px;font-weight:700;>20</span>') : 'Recarregando em <span id="countdown-timer" style="color:#1f2937;font-size:22px;font-weight:700;">20</span> segundos') + '</p></div>';
+                // Marcar banner como completo
+                document.getElementById('taskCompleteBanner').classList.add('show');
+                // Countdown para recarregar
+                var finalCountdown = 20;
+                var fci = setInterval(function() {
+                  finalCountdown--;
+                  var timer = document.getElementById('countdown-timer');
+                  if (timer) timer.textContent = finalCountdown;
+                  if (finalCountdown <= 0) { clearInterval(fci); window.location.reload(); }
+                }, 1000);
+              }
+            }
+          })
+          .catch(function(err) {
+            console.error('[OVERLAY] Erro ao verificar progresso:', err);
+          });
+      }, 5000);
+
+      // ===== CRONÔMETRO VISÍVEL =====
+      // Countdown de 20 segundos que recarrega a página
+      var reloadCountdown = 20;
+      var countdownTimerEl = document.getElementById('overlay-countdown-timer');
+      var reloadInterval = setInterval(function() {
+        reloadCountdown--;
+        if (countdownTimerEl) countdownTimerEl.textContent = reloadCountdown;
+        if (reloadCountdown <= 0) {
+          clearInterval(reloadInterval);
+          window.location.reload();
+        }
+      }, 1000);
+
+      // Auto-trigger ads (anúncios continuam rodando por baixo do overlay)
+      if (requiresDirectAdGesture()) {
+        console.log('[OVERLAY] Auto-trigger desativado em Android antigo; aguardando toque do usuário');
+        updateWatchAdButtonLabel('TOQUE PARA CONTINUAR', 2500);
+      } else {
+        setTimeout(function() { triggerAd({ source: 'overlay_auto' }); }, 1000);
+        setInterval(function() { triggerAd({ source: 'overlay_interval' }); }, 30000);
+      }
+
+      console.log('[OVERLAY] Overlay de progresso criado - aguardando ' + MAX_IMPRESSIONS + ' impressões');
+    }
+
+    // ===== YMID EDIT MODAL =====
+    function showYmidEditModal(currentYmid) {
+      var existing = document.getElementById('ymid-edit-modal');
+      if (existing) existing.remove();
+
+      var overlay = document.createElement('div');
+      overlay.id = 'ymid-edit-modal';
+      overlay.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.7);z-index:2147483646;display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;';
+
+      var card = document.createElement('div');
+      card.style.cssText = 'background:#12121e;border:1px solid rgba(124,58,237,0.3);border-radius:20px;padding:32px;width:360px;max-width:90vw;box-shadow:0 20px 60px rgba(0,0,0,0.5);';
+      card.innerHTML = '<div style="text-align:center;margin-bottom:24px;"><div style="width:48px;height:48px;margin:0 auto 16px;background:linear-gradient(135deg,#7C3AED,#3B82F6);border-radius:14px;display:flex;align-items:center;justify-content:center;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg></div><h3 style="color:#f1f5f9;font-size:20px;font-weight:700;margin:0 0 6px;">Editar YMID</h3><p style="color:#64748b;font-size:13px;margin:0;">Altere seu identificador Young Money</p></div><div style="margin-bottom:20px;"><label style="display:block;font-size:11px;font-weight:600;color:#94a3b8;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.08em;">YMID Atual</label><input type="text" id="ymid-edit-input" value="' + currentYmid + '" style="width:100%;padding:14px 16px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:12px;color:#f1f5f9;font-size:15px;font-family:Share Tech Mono,monospace;outline:none;box-sizing:border-box;" /></div><div style="display:flex;gap:10px;"><button id="ymid-cancel-btn" style="flex:1;padding:13px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:12px;color:#94a3b8;font-size:14px;font-weight:600;cursor:pointer;">Cancelar</button><button id="ymid-save-btn" style="flex:1;padding:13px;background:linear-gradient(135deg,#7C3AED,#3B82F6);border:none;border-radius:12px;color:white;font-size:14px;font-weight:600;cursor:pointer;box-shadow:0 4px 15px rgba(124,58,237,0.3);">Salvar</button></div>';
+
+      overlay.appendChild(card);
+      document.body.appendChild(overlay);
+
+      var input = document.getElementById('ymid-edit-input');
+      setTimeout(function() { input.focus(); input.select(); }, 100);
+
+      document.getElementById('ymid-cancel-btn').addEventListener('click', function() { overlay.remove(); });
+      overlay.addEventListener('click', function(e) { if (e.target === overlay) overlay.remove(); });
+
+      document.getElementById('ymid-save-btn').addEventListener('click', function() {
+        var newYmid = input.value.trim();
+        if (!newYmid) return;
+        localStorage.setItem('user_id', newYmid);
+        localStorage.setItem('user_email', newYmid + '@youngmoney.app');
+        localStorage.setItem('saved_ymid', newYmid);
+        localStorage.setItem('ymid_mode', 'true');
+        overlay.remove();
+        window.location.reload();
+      });
+
+      input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') document.getElementById('ymid-save-btn').click();
+        if (e.key === 'Escape') overlay.remove();
+      });
+    }
+  </script>
+
+  <!-- ===== DEVICE eCPM BOOST (carregar ANTES do SDK) ===== -->
+  <script src="device-ecpm-boost.js"></script>
+
+  <!-- ===== MONETAG SDK PRE-LOADER ===== -->
+  <script>
+    (function() {
+      'use strict';
+      var ZONE_ID = '10325249';
+      var SDK_NAME = 'show_' + ZONE_ID;
+      var SDK_URL = 'https://libtl.com/sdk.js';
+      var MAX_RETRIES = 3;
+      var retryCount = 0;
+      var sdkLoaded = false;
+
+      if (!window.__safeFetchRoleta) window.__safeFetchRoleta = window.fetch.bind(window);
+
+      function loadMonetagSDK() {
+        updateAdStatusText('Verificando carregamento do anúncio... aguarde.', 'loading');
+        if (sdkLoaded || window[SDK_NAME]) { sdkLoaded = true; updateAdStatusText('Anúncio carregado corretamente. Ao tocar em ASSISTIR ANÚNCIO ele deve abrir.', 'ready'); return; }
+        var existing = document.querySelectorAll('script[src="' + SDK_URL + '"]');
+        if (existing.length > 0) {
+          var c = 0;
+          var iv = setInterval(function() {
+            c++;
+            if (window[SDK_NAME]) { clearInterval(iv); sdkLoaded = true; updateAdStatusText('Anúncio carregado corretamente. Ao tocar em ASSISTIR ANÚNCIO ele deve abrir.', 'ready'); }
+            else if (c > 30) { clearInterval(iv); updateAdStatusText('O anúncio ainda não carregou. Aguarde mais um pouco.', 'error'); }
+          }, 500);
+          return;
+        }
+
+        var script = document.createElement('script');
+        script.src = SDK_URL;
+        script.setAttribute('data-zone', ZONE_ID);
+        script.setAttribute('data-sdk', SDK_NAME);
+        script.async = true;
+
+        script.onload = function() {
+          var c = 0;
+          var iv = setInterval(function() {
+            c++;
+            if (window[SDK_NAME]) { clearInterval(iv); sdkLoaded = true; console.log('[MONETAG] SDK pronto'); updateAdStatusText('Anúncio carregado corretamente. Ao tocar em ASSISTIR ANÚNCIO ele deve abrir.', 'ready'); }
+            else if (c > 30) { clearInterval(iv); retryCount++; if (retryCount < MAX_RETRIES) { updateAdStatusText('O anúncio ainda está carregando. Aguarde...', 'loading'); setTimeout(loadMonetagSDK, 2000); } else { updateAdStatusText('O anúncio não carregou corretamente. Aguarde e tente novamente.', 'error'); } }
+          }, 500);
+        };
+        script.onerror = function() { retryCount++; if (retryCount < MAX_RETRIES) { updateAdStatusText('Falha temporária ao carregar o anúncio. Tentando novamente...', 'loading'); setTimeout(loadMonetagSDK, 3000); } else { updateAdStatusText('Falha ao carregar o anúncio. Tente novamente em instantes.', 'error'); } };
+        document.head.appendChild(script);
+      }
+
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadMonetagSDK);
+      else loadMonetagSDK();
+      setTimeout(function() { if (!window[SDK_NAME] && !sdkLoaded) loadMonetagSDK(); }, 2000);
+      setTimeout(function() { if (!window[SDK_NAME] && !sdkLoaded) loadMonetagSDK(); }, 5000);
+    })();
+  </script>
+
+  <!-- ===== TRANSLATION SYSTEM ===== -->
+  <script>
+    (function() {
+      'use strict';
+      var GEO_API = 'https://youngmoney-api-railway-production.up.railway.app/api/v1/geo/country.php';
+      var CACHE_KEY = 'ym_lang';
+      var CACHE_TS_KEY = 'ym_lang_ts';
+      var CACHE_HOURS = 24;
+      var currentLang = 'pt';
+
+      // Mapeamento de pais (country code) para idioma
+      var COUNTRY_TO_LANG = {
+        'BR':'pt','PT':'pt','AO':'pt','MZ':'pt','CV':'pt','GW':'pt','TL':'pt','ST':'pt',
+        'US':'en','GB':'en','AU':'en','CA':'en','NZ':'en','IE':'en','ZA':'en','IN':'en','PH':'en','NG':'en','GH':'en','KE':'en','SG':'en','JM':'en',
+        'ES':'es','MX':'es','AR':'es','CO':'es','CL':'es','PE':'es','VE':'es','EC':'es','GT':'es','CU':'es','BO':'es','DO':'es','HN':'es','PY':'es','SV':'es','NI':'es','CR':'es','PA':'es','UY':'es',
+        'FR':'fr','BE':'fr','CH':'fr','SN':'fr','CI':'fr','CM':'fr','MG':'fr','ML':'fr','BF':'fr','NE':'fr','TD':'fr','GN':'fr','RW':'fr','HT':'fr','CD':'fr','CG':'fr','GA':'fr','DJ':'fr','KM':'fr','LU':'fr','MC':'fr',
+        'DE':'de','AT':'de','LI':'de',
+        'IT':'it','SM':'it','VA':'it',
+        'RU':'ru','BY':'ru','KZ':'ru','KG':'ru','TJ':'ru',
+        'CN':'zh','TW':'zh','HK':'zh','MO':'zh',
+        'JP':'ja',
+        'KR':'ko',
+        'SA':'ar','AE':'ar','EG':'ar','IQ':'ar','MA':'ar','DZ':'ar','SD':'ar','YE':'ar','SY':'ar','TN':'ar','JO':'ar','LY':'ar','LB':'ar','OM':'ar','KW':'ar','QA':'ar','BH':'ar','MR':'ar','PS':'ar',
+        'PK':'hi','BD':'hi','NP':'hi','LK':'hi',
+        'TR':'tr','CY':'tr',
+        'NL':'nl','SR':'nl',
+        'PL':'pl',
+        'SE':'sv',
+        'ID':'id',
+        'TH':'th',
+        'VN':'vi',
+        'UA':'uk','RO':'ro','CZ':'cs','HU':'hu','GR':'el','BG':'bg','RS':'sr','HR':'hr','SK':'sk','SI':'sl','EE':'et','LV':'lv','LT':'lt','FI':'fi','DK':'da','NO':'no','IS':'is','AL':'sq','MK':'mk','BA':'bs','ME':'sr','GE':'ka','AM':'hy','AZ':'az','UZ':'uz','TM':'tk','MN':'mn','MM':'my','KH':'km','LA':'lo','IL':'he','IR':'fa','AF':'fa','ET':'am','TZ':'sw','UG':'sw'
+      };
+
+      var TRANSLATIONS = {
+        pt: { invalidYmid:'YMID invalido', yourYmid:'Seu YMID', enterYmid:'Digite seu YMID', enter:'Entrar', entering:'Entrando...', loginFooter:'Insira o YMID que aparece no seu app Young Money.', invalidYmidMsg:'Por favor, insira um YMID valido.', loginError:'Erro ao entrar. Tente novamente.', missionComplete:'Missao Concluida', clicksDone:'Voce completou {n} cliques com sucesso.', waiting:'Aguardando...', reloadIn:'Recarregando em {n} segundos', dailyMission:'Missao Diaria', completeTasksBelow:'Complete as tarefas abaixo para desbloquear suas recompensas', adsWatched:'Anuncios Assistidos', clicksDone2:'Cliques Realizados', totalImpressions:'Total de Impressoes', totalClicks:'Total de Cliques', watchAd:'ASSISTIR ANUNCIO', interactHint:'Interaja com o anuncio para acumular mais pontos', taskComplete:'TAREFA CONCLUIDA!', loading:'CARREGANDO...', sdkNotLoaded:'SDK nao carregado. Aguarde...', editYmid:'Editar YMID', changeYmid:'Altere seu identificador Young Money', currentYmid:'YMID Atual', cancel:'Cancelar', save:'Salvar' },
+        en: { invalidYmid:'Invalid YMID', yourYmid:'Your YMID', enterYmid:'Enter your YMID', enter:'Enter', entering:'Entering...', loginFooter:'Enter the YMID shown in your Young Money app.', invalidYmidMsg:'Please enter a valid YMID.', loginError:'Error logging in. Try again.', missionComplete:'Mission Complete', clicksDone:'You completed {n} clicks successfully.', waiting:'Waiting...', reloadIn:'Reloading in {n} seconds', dailyMission:'Daily Mission', completeTasksBelow:'Complete the tasks below to unlock your rewards', adsWatched:'Ads Watched', clicksDone2:'Clicks Done', totalImpressions:'Total Impressions', totalClicks:'Total Clicks', watchAd:'WATCH AD', interactHint:'Interact with the ad to earn more points', taskComplete:'TASK COMPLETE!', loading:'LOADING...', sdkNotLoaded:'SDK not loaded. Please wait...', editYmid:'Edit YMID', changeYmid:'Change your Young Money ID', currentYmid:'Current YMID', cancel:'Cancel', save:'Save' },
+        es: { invalidYmid:'YMID invalido', yourYmid:'Tu YMID', enterYmid:'Ingresa tu YMID', enter:'Entrar', entering:'Entrando...', loginFooter:'Ingresa el YMID que aparece en tu app Young Money.', invalidYmidMsg:'Por favor, ingresa un YMID valido.', loginError:'Error al entrar. Intenta de nuevo.', missionComplete:'Mision Completada', clicksDone:'Completaste {n} clics con exito.', waiting:'Esperando...', reloadIn:'Recargando en {n} segundos', dailyMission:'Mision Diaria', completeTasksBelow:'Completa las tareas para desbloquear tus recompensas', adsWatched:'Anuncios Vistos', clicksDone2:'Clics Realizados', totalImpressions:'Total de Impresiones', totalClicks:'Total de Clics', watchAd:'VER ANUNCIO', interactHint:'Interactua con el anuncio para ganar mas puntos', taskComplete:'TAREA COMPLETADA!', loading:'CARGANDO...', sdkNotLoaded:'SDK no cargado. Espera...', editYmid:'Editar YMID', changeYmid:'Cambia tu identificador Young Money', currentYmid:'YMID Actual', cancel:'Cancelar', save:'Guardar' },
+        fr: { invalidYmid:'YMID invalide', yourYmid:'Votre YMID', enterYmid:'Entrez votre YMID', enter:'Entrer', entering:'Connexion...', loginFooter:'Entrez le YMID affiche dans votre app Young Money.', invalidYmidMsg:'Veuillez entrer un YMID valide.', loginError:'Erreur de connexion. Reessayez.', missionComplete:'Mission Terminee', clicksDone:'Vous avez complete {n} clics avec succes.', waiting:'En attente...', reloadIn:'Rechargement dans {n} secondes', dailyMission:'Mission Quotidienne', completeTasksBelow:'Completez les taches ci-dessous pour debloquer vos recompenses', adsWatched:'Annonces Regardees', clicksDone2:'Clics Effectues', totalImpressions:'Total Impressions', totalClicks:'Total Clics', watchAd:'REGARDER ANNONCE', interactHint:'Interagissez avec l annonce pour gagner plus de points', taskComplete:'TACHE TERMINEE!', loading:'CHARGEMENT...', sdkNotLoaded:'SDK non charge. Patientez...', editYmid:'Modifier YMID', changeYmid:'Changez votre identifiant Young Money', currentYmid:'YMID Actuel', cancel:'Annuler', save:'Enregistrer' },
+        de: { invalidYmid:'Ungueltige YMID', yourYmid:'Ihre YMID', enterYmid:'Geben Sie Ihre YMID ein', enter:'Eintreten', entering:'Anmeldung...', loginFooter:'Geben Sie die YMID ein, die in Ihrer Young Money App angezeigt wird.', invalidYmidMsg:'Bitte geben Sie eine gueltige YMID ein.', loginError:'Anmeldefehler. Versuchen Sie es erneut.', missionComplete:'Mission Abgeschlossen', clicksDone:'Sie haben {n} Klicks erfolgreich abgeschlossen.', waiting:'Warten...', reloadIn:'Neuladen in {n} Sekunden', dailyMission:'Taegliche Mission', completeTasksBelow:'Erledigen Sie die Aufgaben um Ihre Belohnungen freizuschalten', adsWatched:'Anzeigen Angesehen', clicksDone2:'Klicks Erledigt', totalImpressions:'Gesamte Impressionen', totalClicks:'Gesamte Klicks', watchAd:'ANZEIGE ANSEHEN', interactHint:'Interagieren Sie mit der Anzeige um mehr Punkte zu sammeln', taskComplete:'AUFGABE ERLEDIGT!', loading:'LADEN...', sdkNotLoaded:'SDK nicht geladen. Bitte warten...', editYmid:'YMID Bearbeiten', changeYmid:'Aendern Sie Ihre Young Money ID', currentYmid:'Aktuelle YMID', cancel:'Abbrechen', save:'Speichern' },
+        it: { invalidYmid:'YMID non valido', yourYmid:'Il tuo YMID', enterYmid:'Inserisci il tuo YMID', enter:'Entra', entering:'Accesso...', loginFooter:'Inserisci il YMID mostrato nella tua app Young Money.', invalidYmidMsg:'Per favore inserisci un YMID valido.', loginError:'Errore di accesso. Riprova.', missionComplete:'Missione Completata', clicksDone:'Hai completato {n} clic con successo.', waiting:'In attesa...', reloadIn:'Ricaricamento tra {n} secondi', dailyMission:'Missione Giornaliera', completeTasksBelow:'Completa le attivita per sbloccare le tue ricompense', adsWatched:'Annunci Visti', clicksDone2:'Clic Effettuati', totalImpressions:'Totale Impressioni', totalClicks:'Totale Clic', watchAd:'GUARDA ANNUNCIO', interactHint:'Interagisci con l annuncio per guadagnare piu punti', taskComplete:'ATTIVITA COMPLETATA!', loading:'CARICAMENTO...', sdkNotLoaded:'SDK non caricato. Attendere...', editYmid:'Modifica YMID', changeYmid:'Cambia il tuo identificatore Young Money', currentYmid:'YMID Attuale', cancel:'Annulla', save:'Salva' },
+        ru: { invalidYmid:'Neviernyj YMID', yourYmid:'Vash YMID', enterYmid:'Vvedite vash YMID', enter:'Vojti', entering:'Vkhod...', loginFooter:'Vvedite YMID iz vashego prilozhenija Young Money.', invalidYmidMsg:'Pozhalujsta vvedite korrektnyj YMID.', loginError:'Oshibka vkhoda. Poprobujte snova.', missionComplete:'Missija Zavershena', clicksDone:'Vy uspeshno vypolnili {n} klikov.', waiting:'Ozhidanie...', reloadIn:'Perezagruzka cherez {n} sekund', dailyMission:'Ezhednevnaja Missija', completeTasksBelow:'Vypolnite zadanija chtoby razblokirovatj nagrady', adsWatched:'Prosmotreno Reklam', clicksDone2:'Klikov Sdelano', totalImpressions:'Vsego Pokazov', totalClicks:'Vsego Klikov', watchAd:'SMOTRETJ REKLAMU', interactHint:'Vzaimodejstvujte s reklamoj chtoby zarabotatj bolshe ochkov', taskComplete:'ZADANIE VYPOLNENO!', loading:'ZAGRUZKA...', sdkNotLoaded:'SDK ne zagrushen. Podozhdite...', editYmid:'Redaktirovatj YMID', changeYmid:'Izmenite vash identifikator Young Money', currentYmid:'Tekushchij YMID', cancel:'Otmena', save:'Sokhranitj' },
+        zh: { invalidYmid:'YMID wu xiao', yourYmid:'nin de YMID', enterYmid:'qing shu ru nin de YMID', enter:'jin ru', entering:'deng lu zhong...', loginFooter:'qing shu ru Young Money ying yong zhong xian shi de YMID', invalidYmidMsg:'qing shu ru you xiao de YMID', loginError:'deng lu cuo wu qing chong shi', missionComplete:'ren wu wan cheng', clicksDone:'nin yi cheng gong wan cheng {n} ci dian ji', waiting:'deng dai zhong...', reloadIn:'{n} miao hou chong xin jia zai', dailyMission:'mei ri ren wu', completeTasksBelow:'wan cheng yi xia ren wu yi jie suo jiang li', adsWatched:'yi guan kan guang gao', clicksDone2:'yi wan cheng dian ji', totalImpressions:'zong zhan shi ci shu', totalClicks:'zong dian ji ci shu', watchAd:'GUAN KAN GUANG GAO', interactHint:'yu guang gao hu dong yi huo de geng duo ji fen', taskComplete:'REN WU WAN CHENG!', loading:'JIA ZAI ZHONG...', sdkNotLoaded:'SDK wei jia zai qing shao hou...', editYmid:'bian ji YMID', changeYmid:'geng gai nin de Young Money biao shi fu', currentYmid:'dang qian YMID', cancel:'qu xiao', save:'bao cun' },
+        ja: { invalidYmid:'無効なYMIDです', yourYmid:'あなたのYMID', enterYmid:'YMIDを入力してください', enter:'ログイン', entering:'ログイン中...', loginFooter:'Young Moneyアプリに表示されるYMIDを入力してください。', invalidYmidMsg:'有効なYMIDを入力してください。', loginError:'ログインエラー。もう一度お試しください。', missionComplete:'ミッション完了', clicksDone:'{n}回のクリックを完了しました。', waiting:'お待ちください...', reloadIn:'{n}秒後に再読み込みします', dailyMission:'デイリーミッション', completeTasksBelow:'報酬を解除するために下のタスクを完了してください', adsWatched:'視聴した広告', clicksDone2:'完了したクリック', totalImpressions:'合計表示回数', totalClicks:'合計クリック数', watchAd:'広告を見る', interactHint:'広告を操作してさらにポイントを獲得しましょう', taskComplete:'タスク完了!', loading:'読み込み中...', sdkNotLoaded:'SDKが読み込まれていません。お待ちください...', editYmid:'YMIDを編集', changeYmid:'Young Money IDを変更', currentYmid:'現在のYMID', cancel:'キャンセル', save:'保存' },
+        ko: { invalidYmid:'YMID ga yuhyo haji anhseubnida', yourYmid:'gwi ha ui YMID', enterYmid:'YMID reul ibryeok haseyo', enter:'Ibryeok', entering:'Rogeuin jung...', loginFooter:'Young Money aeb eseo pyosi doeneun YMID reul ibryeok haseyo.', invalidYmidMsg:'Yuhyo han YMID reul ibryeok haseyo.', loginError:'Rogeuin oryu. Dasi sidohaseyo.', missionComplete:'Misyeon Wanryo', clicksDone:'{n} beon ui keulrik eul seong gong jeok euro wanryo haessseubnida.', waiting:'Daegi jung...', reloadIn:'{n} cho hu saero gochim', dailyMission:'Ilil Misyeon', completeTasksBelow:'Bosang eul haeje haryeomyeon arae jakeobeul wanryo haseyo', adsWatched:'Bon Gwanggo', clicksDone2:'Keulrik Wanryo', totalImpressions:'Chong Nochul', totalClicks:'Chong Keulrik', watchAd:'GWANGGO BOGI', interactHint:'Gwanggo wa sanghojagyong hayeo deo manheun pointeu reul eodeuseyo', taskComplete:'JAKKEOB WANRYO!', loading:'RODING JUNG...', sdkNotLoaded:'SDK ga roding doejianhassseubnida. Jamsi gidariseyo...', editYmid:'YMID Pyeonjib', changeYmid:'Young Money ID byeongyeong', currentYmid:'Hyeonjae YMID', cancel:'Chwiso', save:'Jeojang' },
+        ar: { invalidYmid:'YMID ghayr salih', yourYmid:'YMID al-khas bik', enterYmid:'Adkhil YMID al-khas bik', enter:'Dukhul', entering:'Jari al-dukhul...', loginFooter:'Adkhil YMID al-mawjud fi tatbiq Young Money.', invalidYmidMsg:'Yurja idkhal YMID salih.', loginError:'Khata fi al-dukhul. Hawil marra ukhra.', missionComplete:'Al-muhimma muktamila', clicksDone:'Laqad akmalat {n} naqra bi-najah.', waiting:'Bi-intizar...', reloadIn:'Iadat al-tahmil fi {n} thawani', dailyMission:'Al-muhimma al-yawmiyya', completeTasksBelow:'Akmil al-maham adnah li-fath al-mukafaat', adsWatched:'Ilanat mushahada', clicksDone2:'Naqrat muktamila', totalImpressions:'Ijmali al-intibaaat', totalClicks:'Ijmali al-naqrat', watchAd:'MUSHAHADA ILAN', interactHint:'Tafaal maa al-ilan li-kasb mazid min al-niqat', taskComplete:'AL-MUHIMMA MUKTAMILA!', loading:'TAHMIL...', sdkNotLoaded:'SDK lam yutahammal. Intazir...', editYmid:'Tahrir YMID', changeYmid:'Ghayyir muarrifak fi Young Money', currentYmid:'YMID al-hali', cancel:'Ilgha', save:'Hifz' },
+        hi: { invalidYmid:'YMID amaanya hai', yourYmid:'Aapka YMID', enterYmid:'Apna YMID darj karein', enter:'Pravesh', entering:'Pravesh ho raha hai...', loginFooter:'Young Money app mein dikhaya gaya YMID darj karein.', invalidYmidMsg:'Kripya ek maanya YMID darj karein.', loginError:'Pravesh mein truti. Punah prayaas karein.', missionComplete:'Mission Poora', clicksDone:'Aapne {n} click safaltapoorvak poore kiye.', waiting:'Pratiksha...', reloadIn:'{n} second mein reload hoga', dailyMission:'Dainik Mission', completeTasksBelow:'Apne puraskaar kholne ke liye neeche ke kaary poore karein', adsWatched:'Dekhe Gaye Vigyaapan', clicksDone2:'Click Poore Hue', totalImpressions:'Kul Impression', totalClicks:'Kul Click', watchAd:'VIGYAAPAN DEKHEIN', interactHint:'Adhik ank prapt karne ke liye vigyaapan se interact karein', taskComplete:'KAARY POORA!', loading:'LOAD HO RAHA HAI...', sdkNotLoaded:'SDK load nahi hua. Kripya pratiksha karein...', editYmid:'YMID Badlein', changeYmid:'Apna Young Money pahchaan badlein', currentYmid:'Vartmaan YMID', cancel:'Radd Karein', save:'Save Karein' },
+        tr: { invalidYmid:'Gecersiz YMID', yourYmid:'YMID niz', enterYmid:'YMID nizi girin', enter:'Giris', entering:'Giris yapiliyor...', loginFooter:'Young Money uygulamanizda gorunen YMID yi girin.', invalidYmidMsg:'Lutfen gecerli bir YMID girin.', loginError:'Giris hatasi. Tekrar deneyin.', missionComplete:'Gorev Tamamlandi', clicksDone:'{n} tiklama basariyla tamamlandi.', waiting:'Bekleniyor...', reloadIn:'{n} saniye icinde yeniden yukleniyor', dailyMission:'Gunluk Gorev', completeTasksBelow:'Odullerinizi acmak icin asagidaki gorevleri tamamlayin', adsWatched:'Izlenen Reklamlar', clicksDone2:'Yapilan Tiklamalar', totalImpressions:'Toplam Gosterim', totalClicks:'Toplam Tiklama', watchAd:'REKLAM IZLE', interactHint:'Daha fazla puan kazanmak icin reklamla etkilesime gecin', taskComplete:'GOREV TAMAMLANDI!', loading:'YUKLENIYOR...', sdkNotLoaded:'SDK yuklenmedi. Lutfen bekleyin...', editYmid:'YMID Duzenle', changeYmid:'Young Money kimliginizi degistirin', currentYmid:'Mevcut YMID', cancel:'Iptal', save:'Kaydet' },
+        nl: { invalidYmid:'Ongeldige YMID', yourYmid:'Uw YMID', enterYmid:'Voer uw YMID in', enter:'Inloggen', entering:'Inloggen...', loginFooter:'Voer de YMID in die in uw Young Money app wordt weergegeven.', invalidYmidMsg:'Voer een geldige YMID in.', loginError:'Inlogfout. Probeer opnieuw.', missionComplete:'Missie Voltooid', clicksDone:'U heeft {n} klikken succesvol voltooid.', waiting:'Wachten...', reloadIn:'Herladen over {n} seconden', dailyMission:'Dagelijkse Missie', completeTasksBelow:'Voltooi de taken hieronder om uw beloningen te ontgrendelen', adsWatched:'Bekeken Advertenties', clicksDone2:'Klikken Voltooid', totalImpressions:'Totaal Vertoningen', totalClicks:'Totaal Klikken', watchAd:'ADVERTENTIE BEKIJKEN', interactHint:'Interactie met de advertentie om meer punten te verdienen', taskComplete:'TAAK VOLTOOID!', loading:'LADEN...', sdkNotLoaded:'SDK niet geladen. Even geduld...', editYmid:'YMID Bewerken', changeYmid:'Wijzig uw Young Money ID', currentYmid:'Huidige YMID', cancel:'Annuleren', save:'Opslaan' },
+        pl: { invalidYmid:'Nieprawidlowy YMID', yourYmid:'Twoj YMID', enterYmid:'Wpisz swoj YMID', enter:'Wejdz', entering:'Logowanie...', loginFooter:'Wpisz YMID wyswietlany w aplikacji Young Money.', invalidYmidMsg:'Prosze wpisac prawidlowy YMID.', loginError:'Blad logowania. Sprobuj ponownie.', missionComplete:'Misja Zakonczona', clicksDone:'Pomyslnie wykonales {n} klikniec.', waiting:'Oczekiwanie...', reloadIn:'Ponowne ladowanie za {n} sekund', dailyMission:'Misja Dzienna', completeTasksBelow:'Wykonaj zadania ponizej aby odblokowac nagrody', adsWatched:'Obejrzane Reklamy', clicksDone2:'Wykonane Klikniecia', totalImpressions:'Laczna Liczba Wyswietlen', totalClicks:'Laczna Liczba Klikniec', watchAd:'OGLADAJ REKLAME', interactHint:'Wchodz w interakcje z reklama aby zdobyc wiecej punktow', taskComplete:'ZADANIE WYKONANE!', loading:'LADOWANIE...', sdkNotLoaded:'SDK nie zaladowane. Prosze czekac...', editYmid:'Edytuj YMID', changeYmid:'Zmien swoj identyfikator Young Money', currentYmid:'Aktualny YMID', cancel:'Anuluj', save:'Zapisz' },
+        sv: { invalidYmid:'Ogiltigt YMID', yourYmid:'Ditt YMID', enterYmid:'Ange ditt YMID', enter:'Logga in', entering:'Loggar in...', loginFooter:'Ange YMID som visas i din Young Money app.', invalidYmidMsg:'Ange ett giltigt YMID.', loginError:'Inloggningsfel. Forsok igen.', missionComplete:'Uppdrag Slutfort', clicksDone:'Du har slutfort {n} klick.', waiting:'Vantar...', reloadIn:'Laddar om om {n} sekunder', dailyMission:'Dagligt Uppdrag', completeTasksBelow:'Slutfor uppgifterna nedan for att lasa upp dina beloeningar', adsWatched:'Sedda Annonser', clicksDone2:'Klick Slutforda', totalImpressions:'Totalt Visningar', totalClicks:'Totalt Klick', watchAd:'SE ANNONS', interactHint:'Interagera med annonsen for att tjana fler poang', taskComplete:'UPPGIFT SLUTFORD!', loading:'LADDAR...', sdkNotLoaded:'SDK inte laddad. Vanta...', editYmid:'Redigera YMID', changeYmid:'Andra din Young Money ID', currentYmid:'Nuvarande YMID', cancel:'Avbryt', save:'Spara' },
+        id: { invalidYmid:'YMID tidak valid', yourYmid:'YMID Anda', enterYmid:'Masukkan YMID Anda', enter:'Masuk', entering:'Masuk...', loginFooter:'Masukkan YMID yang ditampilkan di aplikasi Young Money Anda.', invalidYmidMsg:'Silakan masukkan YMID yang valid.', loginError:'Kesalahan masuk. Coba lagi.', missionComplete:'Misi Selesai', clicksDone:'Anda telah menyelesaikan {n} klik dengan sukses.', waiting:'Menunggu...', reloadIn:'Memuat ulang dalam {n} detik', dailyMission:'Misi Harian', completeTasksBelow:'Selesaikan tugas di bawah untuk membuka hadiah Anda', adsWatched:'Iklan Ditonton', clicksDone2:'Klik Selesai', totalImpressions:'Total Tayangan', totalClicks:'Total Klik', watchAd:'TONTON IKLAN', interactHint:'Berinteraksi dengan iklan untuk mendapatkan lebih banyak poin', taskComplete:'TUGAS SELESAI!', loading:'MEMUAT...', sdkNotLoaded:'SDK belum dimuat. Tunggu...', editYmid:'Edit YMID', changeYmid:'Ubah pengenal Young Money Anda', currentYmid:'YMID Saat Ini', cancel:'Batal', save:'Simpan' },
+        th: { invalidYmid:'YMID mai thuuk tong', yourYmid:'YMID khong khun', enterYmid:'Krok YMID khong khun', enter:'Khao su', entering:'Kamlang khao su...', loginFooter:'Krok YMID thi sadaeng nai app Young Money khong khun.', invalidYmidMsg:'Karuna krok YMID thi thuuk tong.', loginError:'Khao su phid phlad. Long ik khrang.', missionComplete:'Pharakit Samret', clicksDone:'Khun tham {n} khlik samret laew.', waiting:'Ror...', reloadIn:'Load mai nai {n} winathi', dailyMission:'Pharakit Prajam Wan', completeTasksBelow:'Tham ngan hai set phuea plod lok rangwan', adsWatched:'Khosana thi du laew', clicksDone2:'Khlik thi tham laew', totalImpressions:'Ruam Kan Sadaeng', totalClicks:'Ruam Kan Khlik', watchAd:'DU KHOSANA', interactHint:'Tob to kap khosana phuea dai khaen mak khuen', taskComplete:'NGAN SET LAEW!', loading:'KAMLANG LOAD...', sdkNotLoaded:'SDK yang mai load. Ror sak khru...', editYmid:'Kae YMID', changeYmid:'Plian ID Young Money khong khun', currentYmid:'YMID Pajuban', cancel:'Yok Loek', save:'Bantheuk' },
+        vi: { invalidYmid:'YMID khong hop le', yourYmid:'YMID cua ban', enterYmid:'Nhap YMID cua ban', enter:'Dang nhap', entering:'Dang dang nhap...', loginFooter:'Nhap YMID hien thi trong ung dung Young Money cua ban.', invalidYmidMsg:'Vui long nhap YMID hop le.', loginError:'Loi dang nhap. Thu lai.', missionComplete:'Nhiem Vu Hoan Thanh', clicksDone:'Ban da hoan thanh {n} luot nhan thanh cong.', waiting:'Dang cho...', reloadIn:'Tai lai sau {n} giay', dailyMission:'Nhiem Vu Hang Ngay', completeTasksBelow:'Hoan thanh cac nhiem vu ben duoi de mo khoa phan thuong', adsWatched:'Quang Cao Da Xem', clicksDone2:'Luot Nhan Hoan Thanh', totalImpressions:'Tong Luot Hien Thi', totalClicks:'Tong Luot Nhan', watchAd:'XEM QUANG CAO', interactHint:'Tuong tac voi quang cao de kiem them diem', taskComplete:'NHIEM VU HOAN THANH!', loading:'DANG TAI...', sdkNotLoaded:'SDK chua tai. Vui long doi...', editYmid:'Sua YMID', changeYmid:'Thay doi ma nhan dang Young Money', currentYmid:'YMID Hien Tai', cancel:'Huy', save:'Luu' },
+        uk: { invalidYmid:'Nedijsnyj YMID', yourYmid:'Vash YMID', enterYmid:'Vvedit vash YMID', enter:'Uvijty', entering:'Vkhid...', loginFooter:'Vvedit YMID z vashoho dodatku Young Money.', invalidYmidMsg:'Bud laska vvedit dijsnyj YMID.', loginError:'Pomylka vkhodu. Sprobujte znovu.', missionComplete:'Misiju Vykonano', clicksDone:'Vy uspishno vykonaly {n} klikiv.', waiting:'Ochikuvannia...', reloadIn:'Perezavantazhennia cherez {n} sekund', dailyMission:'Shchodenna Misija', completeTasksBelow:'Vykonajte zavdannia shchob rozblokuvaty nahorody', adsWatched:'Perehlianuto Reklam', clicksDone2:'Klikiv Zrobleno', totalImpressions:'Vsioho Pokaziv', totalClicks:'Vsioho Klikiv', watchAd:'DYVYTYSIA REKLAMU', interactHint:'Vzaiemodijte z reklamoiu shchob otrymaty bilshe baliv', taskComplete:'ZAVDANNIA VYKONANO!', loading:'ZAVANTAZHENNIA...', sdkNotLoaded:'SDK ne zavantazheno. Zachekajte...', editYmid:'Redahuvaty YMID', changeYmid:'Zminit vash identyfikator Young Money', currentYmid:'Potochnyj YMID', cancel:'Skasuvaty', save:'Zberehty' },
+        ro: { invalidYmid:'YMID invalid', yourYmid:'YMID-ul tau', enterYmid:'Introdu YMID-ul tau', enter:'Intra', entering:'Se conecteaza...', loginFooter:'Introdu YMID-ul afisat in aplicatia Young Money.', invalidYmidMsg:'Te rugam introdu un YMID valid.', loginError:'Eroare la conectare. Incearca din nou.', missionComplete:'Misiune Completa', clicksDone:'Ai completat {n} clickuri cu succes.', waiting:'Se asteapta...', reloadIn:'Reincarcare in {n} secunde', dailyMission:'Misiunea Zilnica', completeTasksBelow:'Completeaza sarcinile de mai jos pentru a debloca recompensele', adsWatched:'Reclame Vizionate', clicksDone2:'Clickuri Realizate', totalImpressions:'Total Afisari', totalClicks:'Total Clickuri', watchAd:'VIZIONARE RECLAMA', interactHint:'Interactioneaza cu reclama pentru a castiga mai multe puncte', taskComplete:'SARCINA COMPLETA!', loading:'SE INCARCA...', sdkNotLoaded:'SDK nu este incarcat. Asteapta...', editYmid:'Editeaza YMID', changeYmid:'Schimba identificatorul Young Money', currentYmid:'YMID Actual', cancel:'Anuleaza', save:'Salveaza' },
+        fi: { invalidYmid:'Virheellinen YMID', yourYmid:'YMID-si', enterYmid:'Syota YMID-si', enter:'Kirjaudu', entering:'Kirjaudutaan...', loginFooter:'Syota Young Money sovelluksessa nakyva YMID.', invalidYmidMsg:'Syota kelvollinen YMID.', loginError:'Kirjautumisvirhe. Yrita uudelleen.', missionComplete:'Tehtava Suoritettu', clicksDone:'Olet suorittanut {n} klikkausta onnistuneesti.', waiting:'Odotetaan...', reloadIn:'Ladataan uudelleen {n} sekunnissa', dailyMission:'Paivittainen Tehtava', completeTasksBelow:'Suorita alla olevat tehtavat palkintojen avaamiseksi', adsWatched:'Katsotut Mainokset', clicksDone2:'Klikkaukset Tehty', totalImpressions:'Nayttokerrat Yhteensa', totalClicks:'Klikkaukset Yhteensa', watchAd:'KATSO MAINOS', interactHint:'Ole vuorovaikutuksessa mainoksen kanssa ansaitaksesi lisaa pisteita', taskComplete:'TEHTAVA SUORITETTU!', loading:'LADATAAN...', sdkNotLoaded:'SDK ei ladattu. Odota...', editYmid:'Muokkaa YMID', changeYmid:'Vaihda Young Money tunnistesi', currentYmid:'Nykyinen YMID', cancel:'Peruuta', save:'Tallenna' },
+        da: { invalidYmid:'Ugyldigt YMID', yourYmid:'Dit YMID', enterYmid:'Indtast dit YMID', enter:'Log ind', entering:'Logger ind...', loginFooter:'Indtast YMID vist i din Young Money app.', invalidYmidMsg:'Indtast venligst et gyldigt YMID.', loginError:'Login fejl. Proev igen.', missionComplete:'Mission Faerdig', clicksDone:'Du har gennemfoert {n} klik.', waiting:'Venter...', reloadIn:'Genindlaeser om {n} sekunder', dailyMission:'Daglig Mission', completeTasksBelow:'Gennemfoer opgaverne nedenfor for at laase op for dine beloenninger', adsWatched:'Sete Annoncer', clicksDone2:'Klik Gennemfoert', totalImpressions:'Samlede Visninger', totalClicks:'Samlede Klik', watchAd:'SE ANNONCE', interactHint:'Interager med annoncen for at optjene flere point', taskComplete:'OPGAVE FAERDIG!', loading:'INDLAESER...', sdkNotLoaded:'SDK ikke indlaest. Vent venligst...', editYmid:'Rediger YMID', changeYmid:'Aendr dit Young Money ID', currentYmid:'Nuvaerende YMID', cancel:'Annuller', save:'Gem' },
+        no: { invalidYmid:'Ugyldig YMID', yourYmid:'Din YMID', enterYmid:'Skriv inn din YMID', enter:'Logg inn', entering:'Logger inn...', loginFooter:'Skriv inn YMID som vises i Young Money appen din.', invalidYmidMsg:'Vennligst skriv inn en gyldig YMID.', loginError:'Innloggingsfeil. Proev igjen.', missionComplete:'Oppdrag Fullfoert', clicksDone:'Du har fullfoert {n} klikk.', waiting:'Venter...', reloadIn:'Laster inn paa nytt om {n} sekunder', dailyMission:'Daglig Oppdrag', completeTasksBelow:'Fullforer oppgavene nedenfor for aa laase opp beloenningene dine', adsWatched:'Sette Annonser', clicksDone2:'Klikk Fullfoert', totalImpressions:'Totalt Visninger', totalClicks:'Totalt Klikk', watchAd:'SE ANNONSE', interactHint:'Samhandle med annonsen for aa tjene flere poeng', taskComplete:'OPPGAVE FULLFOERT!', loading:'LASTER...', sdkNotLoaded:'SDK ikke lastet. Vennligst vent...', editYmid:'Rediger YMID', changeYmid:'Endre din Young Money ID', currentYmid:'Naavaerende YMID', cancel:'Avbryt', save:'Lagre' }
+      };
+
+      // Idiomas suportados
+      var SUPPORTED_LANGS = Object.keys(TRANSLATIONS);
+
+      window.TRANSLATIONS = TRANSLATIONS;
+      window.currentLang = currentLang;
+      window.T = function(key) {
+        var t = TRANSLATIONS[window.currentLang || currentLang] || TRANSLATIONS['en'] || TRANSLATIONS['pt'];
+        return t[key] || TRANSLATIONS['en'][key] || TRANSLATIONS['pt'][key] || key;
+      };
+
+      function applyTranslations() {
+        console.log('[I18N] Aplicando traducoes para: ' + window.currentLang);
+        var els = document.querySelectorAll('[data-i18n]');
+        for (var i = 0; i < els.length; i++) {
+          var k = els[i].getAttribute('data-i18n');
+          var txt = T(k);
+          if (txt) els[i].textContent = txt;
+        }
+        var phs = document.querySelectorAll('[data-i18n-placeholder]');
+        for (var j = 0; j < phs.length; j++) {
+          var pk = phs[j].getAttribute('data-i18n-placeholder');
+          var ptxt = T(pk);
+          if (ptxt) phs[j].placeholder = ptxt;
+        }
+        // Atualizar titulo da pagina
+        document.title = 'Young Money - ' + T('dailyMission');
+      }
+
+      function getCachedLang() {
+        try { var l = localStorage.getItem(CACHE_KEY); var ts = localStorage.getItem(CACHE_TS_KEY); if (!l || !ts) return null; if (Date.now() - parseInt(ts,10) > CACHE_HOURS * 3600000) return null; return l; } catch(e) { return null; }
+      }
+      function setCachedLang(l) { try { localStorage.setItem(CACHE_KEY, l); localStorage.setItem(CACHE_TS_KEY, Date.now().toString()); } catch(e) {} }
+
+      function normalizeLang(langOrCountry) {
+        if (!langOrCountry) return 'pt';
+        // Se for um country code (2 letras maiusculas), mapear para idioma
+        var upper = langOrCountry.toUpperCase();
+        if (COUNTRY_TO_LANG[upper]) return COUNTRY_TO_LANG[upper];
+        // Se for um lang code
+        var c = langOrCountry.split(/[_-]/)[0].toLowerCase();
+        if (SUPPORTED_LANGS.indexOf(c) !== -1) return c;
+        // Fallback para ingles se nao for portugues
+        return 'en';
+      }
+
+      // Detectar idioma pela API geo do projeto (puxa IP)
+      function detectByGeoAPI(cb) {
+        try {
+          console.log('[I18N] Detectando idioma via API geo...');
+          var xhr = new XMLHttpRequest();
+          xhr.open('GET', GEO_API, true);
+          xhr.timeout = 5000;
+          xhr.onload = function() {
+            try {
+              var d = JSON.parse(xhr.responseText);
+              console.log('[I18N] Resposta geo API:', JSON.stringify(d));
+              if (d.success && d.data) {
+                // Tentar pelo country code primeiro, depois pelo language
+                if (d.data.country_code) {
+                  var lang = normalizeLang(d.data.country_code);
+                  console.log('[I18N] Pais detectado: ' + d.data.country_code + ' -> idioma: ' + lang);
+                  cb(lang); return;
+                }
+                if (d.data.language) {
+                  cb(normalizeLang(d.data.language)); return;
+                }
+              }
+            } catch(e) { console.error('[I18N] Erro ao parsear resposta geo:', e); }
+            cb(null);
+          };
+          xhr.onerror = function() { console.warn('[I18N] Erro na API geo'); cb(null); };
+          xhr.ontimeout = function() { console.warn('[I18N] Timeout na API geo'); cb(null); };
+          xhr.send();
+        } catch(e) { cb(null); }
+      }
+
+      // Fallback: detectar pelo navegador
+      function detectByBrowser() {
+        var navLang = navigator.language || navigator.userLanguage || 'pt';
+        return normalizeLang(navLang);
+      }
+
+      function detectLanguage() {
+        // 1. Verificar cache
+        var cached = getCachedLang();
+        if (cached && SUPPORTED_LANGS.indexOf(cached) !== -1) {
+          currentLang = cached;
+          window.currentLang = currentLang;
+          applyTranslations();
+          console.log('[I18N] Idioma do cache: ' + cached);
+        }
+
+        // 2. Detectar pela API geo (IP)
+        detectByGeoAPI(function(lang) {
+          if (lang && lang !== currentLang) {
+            currentLang = lang;
+            window.currentLang = currentLang;
+            setCachedLang(lang);
+            applyTranslations();
+            console.log('[I18N] Idioma detectado por IP: ' + lang);
+          } else if (!cached) {
+            // 3. Fallback: navegador
+            currentLang = detectByBrowser();
+            window.currentLang = currentLang;
+            setCachedLang(currentLang);
+            applyTranslations();
+            console.log('[I18N] Idioma do navegador: ' + currentLang);
+          }
+        });
+      }
+
+      detectLanguage();
+    })();
+  </script>
+
+  <!-- ===== TELEGRAM WEBVIEW COMPAT ===== -->
+   <!-- Telegram Web App SDK -->
+    <script>
+      // eCPM Optimizer v3 - Log de inicialização
+      console.log('✅ Device real:', navigator.userAgent.substring(0, 60));
+      if (window.DeviceEcpmBoost) {
+        var stats = window.DeviceEcpmBoost.getStats();
+        console.log('📱 eCPM Optimizer v3 ATIVO | Device:', stats.deviceType, '| Conexão:', stats.connection);
+      }
+    </script>
+    
+    <!-- Telegram Web App SDK - OFICIAL -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <script>
+      // Criar simulação se o SDK oficial não funcionar
+      window.addEventListener('DOMContentLoaded', function() {
+        const now = Math.floor(Date.now() / 1000);
+        const userId = 1000000000 + Math.floor(Math.random() * 1000000000);
+
+        // Verificar se o Telegram.WebApp foi carregado corretamente
+        if (!window.Telegram || !window.Telegram.WebApp || !window.Telegram.WebApp.initDataUnsafe || !window.Telegram.WebApp.initDataUnsafe.user) {
+          console.log('⚠️ SDK oficial do Telegram não forneceu dados, criando simulação...');
+
+          // Criar objeto Telegram se não existir
+          if (!window.Telegram) {
+            window.Telegram = {};
+          }
+
+          // Criar ou completar WebApp
+          window.Telegram.WebApp = {
+            initData: `query_id=AAHdF6IQAAAAAN0XohDhrOrc&user=%7B%22id%22%3A${userId}%2C%22first_name%22%3A%22User%22%2C%22last_name%22%3A%22Test%22%2C%22username%22%3A%22testuser%22%2C%22language_code%22%3A%22pt%22%2C%22allows_write_to_pm%22%3Atrue%7D&auth_date=${now}&hash=abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890`,
+            initDataUnsafe: {
+              query_id: 'AAHdF6IQAAAAAN0XohDhrOrc',
+              user: {
+                id: userId,
+                first_name: 'User',
+                last_name: 'Test',
+                username: 'testuser',
+                language_code: 'pt',
+                allows_write_to_pm: true,
+                is_premium: false
+              },
+              auth_date: now,
+              hash: 'abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890'
+            },
+            version: '7.0',
+            platform: 'android',
+            colorScheme: 'light',
+            themeParams: {
+              bg_color: '#ffffff',
+              text_color: '#000000',
+              hint_color: '#999999',
+              link_color: '#2481cc',
+              button_color: '#2481cc',
+              button_text_color: '#ffffff',
+              secondary_bg_color: '#f1f1f1'
+            },
+            isExpanded: true,
+            viewportHeight: window.innerHeight,
+            viewportStableHeight: window.innerHeight,
+            headerColor: '#ffffff',
+            backgroundColor: '#ffffff',
+            isClosingConfirmationEnabled: false,
+            ready: function() {
+              console.log('✅ Telegram.WebApp.ready()');
+            },
+            expand: function() {
+              console.log('✅ Telegram.WebApp.expand()');
+            },
+            close: function() {
+              console.log('✅ Telegram.WebApp.close()');
+            },
+            MainButton: {
+              text: 'CONTINUAR',
+              color: '#2481cc',
+              textColor: '#ffffff',
+              isVisible: false,
+              isActive: true,
+              setText: function(text) { this.text = text; },
+              onClick: function(callback) { },
+              show: function() { this.isVisible = true; },
+              hide: function() { this.isVisible = false; }
+            },
+            BackButton: {
+              isVisible: false,
+              show: function() { this.isVisible = true; },
+              hide: function() { this.isVisible = false; }
+            },
+            HapticFeedback: {
+              impactOccurred: function(style) { },
+              notificationOccurred: function(type) { },
+              selectionChanged: function() { }
+            },
+            sendData: function(data) {
+              console.log('Telegram.WebApp.sendData:', data);
+            }
+          };
+
+          console.log('✅ Ambiente Telegram simulado criado');
+        } else {
+          console.log('✅ SDK oficial do Telegram funcionando');
+        }
+
+        console.log('User ID:', window.Telegram.WebApp.initDataUnsafe.user.id);
+      });
+    </script>
+    
+
+  <!-- ===== LOGIN LOGIC ===== -->
+  <script>
+    (function() {
+      'use strict';
+
+      // Check if already logged in
+      var savedUserId = localStorage.getItem('user_id');
+      var savedEmail = localStorage.getItem('user_email');
+
+      if (savedUserId && savedEmail) {
+        var loginScreen = document.getElementById('login-screen');
+        if (loginScreen) loginScreen.remove();
+        var loginStyles = document.getElementById('login-screen-styles');
+        if (loginStyles) loginStyles.remove();
+        initMissionScreen(savedUserId);
+        return;
+      }
+
+      // Auto-detect YMID from URL
+      var urlParams = new URLSearchParams(window.location.search);
+      var urlYmid = urlParams.get('ymid') || urlParams.get('user_id') || urlParams.get('id') || '';
+      if (!urlYmid) {
+        var pathParts = window.location.pathname.split('/').filter(function(p) { return p.length > 0; });
+        if (pathParts.length > 0) {
+          var lastPart = pathParts[pathParts.length - 1];
+          if (/^\d+$/.test(lastPart)) urlYmid = lastPart;
+        }
+      }
+
+      if (urlYmid) {
+        localStorage.setItem('user_id', urlYmid);
+        localStorage.setItem('user_email', urlYmid + '@youngmoney.app');
+        localStorage.setItem('user_logged_in', 'true');
+        localStorage.setItem('saved_ymid', urlYmid);
+        localStorage.setItem('ymid_mode', 'true');
+        var loginScreen = document.getElementById('login-screen');
+        if (loginScreen) loginScreen.remove();
+        initMissionScreen(urlYmid);
+        return;
+      }
+
+      // Login form handler
+      var form = document.getElementById('loginForm');
+      var ymidInput = document.getElementById('loginYmid');
+      var loginBtn = document.getElementById('loginBtn');
+      var loginBtnText = document.getElementById('loginBtnText');
+      var loginSpinner = document.getElementById('loginSpinner');
+      var loginError = document.getElementById('loginError');
+      var loginErrorText = document.getElementById('loginErrorText');
+
+      var rememberedYmid = localStorage.getItem('saved_ymid');
+      if (rememberedYmid && ymidInput) ymidInput.value = rememberedYmid;
+
+      form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var ymid = ymidInput.value.trim();
+        if (!ymid || ymid.length < 1) {
+          loginError.style.display = 'flex';
+          loginErrorText.textContent = window.T ? T('invalidYmidMsg') : 'Por favor, insira um YMID válido.';
+          return;
+        }
+        loginError.style.display = 'none';
+        loginBtn.disabled = true;
+        loginBtnText.textContent = window.T ? T('entering') : 'Entrando...';
+        loginSpinner.style.display = 'inline-block';
+
+        localStorage.setItem('user_id', ymid);
+        localStorage.setItem('user_email', ymid + '@youngmoney.app');
+        localStorage.setItem('user_logged_in', 'true');
+        localStorage.setItem('saved_ymid', ymid);
+        localStorage.setItem('ymid_mode', 'true');
+
+        var loginScreen = document.getElementById('login-screen');
+        loginScreen.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        loginScreen.style.opacity = '0';
+        loginScreen.style.transform = 'scale(1.02)';
+        setTimeout(function() { window.location.reload(); }, 400);
+      });
+    })();
+  </script>
+
+  <!-- ===== AD BLOCKING LAYER (após 2 cliques) ===== -->
+  <script>
+    (function() {
+      var MAX_CLICKS = 2;
+      var blockingLayerActive = false;
+      var checkInterval = null;
+
+      function createBlockingLayer() {
+        if (document.getElementById('ad-blocking-layer')) return;
+        console.log('[CLICK BLOCKER] Criando camada de bloqueio com z-index máximo...');
+
+        var blockingLayer = document.createElement('div');
+        blockingLayer.id = 'ad-blocking-layer';
+        blockingLayer.style.cssText = 'position:fixed !important;top:0 !important;left:0 !important;width:100vw !important;height:100vh !important;background:transparent !important;z-index:2147483646 !important;cursor:not-allowed !important;pointer-events:auto !important;';
+
+        ['click','mousedown','mouseup','touchstart','touchend','touchmove','contextmenu','pointerdown','pointerup'].forEach(function(ev) {
+          blockingLayer.addEventListener(ev, function(e) {
+            e.stopPropagation(); e.stopImmediatePropagation(); e.preventDefault();
+            console.log('[CLICK BLOCKER] ' + ev + ' bloqueado pela camada');
+            return false;
+          }, true);
+        });
+
+        // Adicionar ao <html> para ficar acima de tudo
+        document.documentElement.appendChild(blockingLayer);
+        blockingLayerActive = true;
+
+        // Manter sempre no topo
+        function keepBlockerOnTop() {
+          var el = document.getElementById('ad-blocking-layer');
+          if (!el) return;
+          if (el.parentNode !== document.documentElement) {
+            document.documentElement.appendChild(el);
+          }
+          el.style.zIndex = '2147483646';
+        }
+        setInterval(keepBlockerOnTop, 150);
+
+        // MutationObserver
+        var obs = new MutationObserver(function() { keepBlockerOnTop(); });
+        obs.observe(document.documentElement, { childList: true, subtree: true });
+
+        // CSS forçado
+        if (!document.getElementById('blocker-force-top')) {
+          var s = document.createElement('style');
+          s.id = 'blocker-force-top';
+          s.textContent = '#ad-blocking-layer { position: fixed !important; z-index: 2147483646 !important; pointer-events: auto !important; }';
+          document.head.appendChild(s);
+        }
+
+        console.log('[CLICK BLOCKER] Camada de bloqueio ativada com MutationObserver');
+      }
+
+      function checkClickLimit() {
+        var currentClicks = parseInt(localStorage.getItem('ad_clicks_count') || '0');
+        if (currentClicks >= MAX_CLICKS && !blockingLayerActive) {
+          console.log('[CLICK BLOCKER] Limite de ' + MAX_CLICKS + ' clicks atingido!');
+          if (checkInterval) clearInterval(checkInterval);
+          createBlockingLayer();
+        }
+      }
+
+      checkInterval = setInterval(checkClickLimit, 200);
+      checkClickLimit();
+      setTimeout(checkClickLimit, 500);
+      console.log('[CLICK BLOCKER] Sistema de monitoramento iniciado');
+    })();
+  </script>
+
+  <!-- ===== LOGIN VERIFICATION ===== -->
+  <script src="login-verification.js"></script>
+</body>
+</html>
