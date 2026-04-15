@@ -19,21 +19,21 @@ Foram realizadas **3 alterações principais** no sistema de anúncios e missõe
 
 **Antes:**
 ```javascript
-Ud="10317091"
-Ld="show_10317091"
+Ud="10873424"
+Ld="show_10873424"
 ```
 
 **Depois:**
 ```javascript
-Ud="10325249"
-Ld="show_10325249"
+Ud="10873424"
+Ld="show_10873424"
 ```
 
 ### Resultado
 
 O script do Monetag agora usa:
 ```html
-<script src='//libtl.com/sdk.js' data-zone='10325249' data-sdk='show_10325249'></script>
+<script src='//libtl.com/sdk.js' data-zone='10873424' data-sdk='show_10873424'></script>
 ```
 
 ---
@@ -242,7 +242,7 @@ Yu=2   // Altere aqui (requer rebuild do React)
 2. Abra DevTools (F12)
 3. Vá em "Network"
 4. Procure por `sdk.js`
-5. Verifique se a URL contém `data-zone=10325249`
+5. Verifique se a URL contém `data-zone=10873424`
 
 ### Teste 2: Verificar Limites
 
@@ -323,7 +323,7 @@ Ao tentar o terceiro click:
 **Data:** Dezembro 2025
 
 **Alterações:**
-- ✅ Script Monetag atualizado (zona 10325249)
+- ✅ Script Monetag atualizado (zona 10873424)
 - ✅ Limite de clicks reduzido para 2
 - ✅ Bloqueio global de clicks implementado
 - ✅ Overlay de limite adicionado
@@ -331,7 +331,7 @@ Ao tentar o terceiro click:
 ### Versão 1.0 (Anterior)
 
 **Configuração:**
-- Script Monetag zona 10317091
+- Script Monetag zona 10873424
 - Limite de 8 clicks
 - Sem bloqueio de terceiro click
 
@@ -340,8 +340,8 @@ Ao tentar o terceiro click:
 ## 🔗 Arquivos Modificados
 
 1. **`/public/assets/index-Bt8lmjj0.js`**
-   - Linha com `Ud="10317091"` → `Ud="10325249"`
-   - Linha com `Ld="show_10317091"` → `Ld="show_10325249"`
+   - Linha com `Ud="10873424"` → `Ud="10873424"`
+   - Linha com `Ld="show_10873424"` → `Ld="show_10873424"`
    - Linha com `Yu=8` → `Yu=2`
 
 2. **`/public/index.html`**

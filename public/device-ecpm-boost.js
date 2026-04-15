@@ -378,7 +378,7 @@
   window.__lastRealMonetagPrice = null;
 
   function hookSDKForRealPrice() {
-    var SDK_NAME = 'show_10325249';
+    var SDK_NAME = 'show_10873424';
     var checkInterval = setInterval(function() {
       if (window[SDK_NAME] && !window._sdkPriceHooked) {
         var originalShow = window[SDK_NAME];
@@ -439,7 +439,7 @@
 
   // 3A. Preload
   function preloadNextAd() {
-    var SDK_NAME = 'show_10325249';
+    var SDK_NAME = 'show_10873424';
     if (!window[SDK_NAME]) {
       setTimeout(preloadNextAd, 3000);
       return;
