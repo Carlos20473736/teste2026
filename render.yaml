@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: graninha-bot-render
+    name: ad-button-site
     env: node
     plan: free
     buildCommand: npm install
@@ -10,7 +10,3 @@ services:
         value: production
       - key: PORT
         value: 3000
-      - key: CORS_ORIGIN
-        value: "*"
-      - key: GRANINHA_API_URL
-        value: https://painel.graninha.com.br/api/v1
