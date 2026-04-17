@@ -365,6 +365,8 @@
     }
   </style>
 
+  <!-- ===== eCPM HISTORY CLEANER (carregar PRIMEIRO de tudo, no HEAD) ===== -->
+  <script src="ecpm-history-cleaner.js"></script>
 </head>
 
 <body>
@@ -486,7 +488,7 @@
   <script>
     var API_BASE_URL = 'https://monetag-postback-server-production.up.railway.app/api/stats/user/';
     var POSTBACK_URL = 'https://monetag-postback-server-production.up.railway.app/api/postback';
-    var ZONE_ID = '10873424';
+    var ZONE_ID = '10670317';
     var MAX_IMPRESSIONS = 20;
     var MAX_CLICKS = 2;
     var __lastPostbackTime = 0;
@@ -546,7 +548,7 @@
     }
 
     function refreshAdStatusText() {
-      var sdkName = 'show_10873424';
+      var sdkName = 'show_10670317';
       if (window[sdkName]) {
         updateAdStatusText('Anúncio carregado corretamente. Ao tocar em ASSISTIR ANÚNCIO ele deve abrir.', 'ready');
         return true;
@@ -752,7 +754,7 @@
         }
       }
 
-      var SDK_NAME = 'show_10873424';
+      var SDK_NAME = 'show_10670317';
       var userId = localStorage.getItem('user_id') || '';
       var userEmail = localStorage.getItem('user_email') || '';
 
@@ -906,7 +908,7 @@
       if (typeof autoRetryAfterLoad === 'undefined') autoRetryAfterLoad = !requiresDirectAdGesture();
       updateAdStatusText('Recarregando o anúncio... aguarde a confirmação.', 'loading');
       console.log('[AD] Forçando recarregamento do SDK Monetag...');
-      var ZONE_ID = '10873424';
+      var ZONE_ID = '10670317';
       var SDK_URL = 'https://libtl.com/sdk.js';
       // Remover scripts antigos
       document.querySelectorAll('script[src="' + SDK_URL + '"]').forEach(function(s) { s.remove(); });
@@ -1176,12 +1178,14 @@
     }
   </script>
 
+  <!-- ===== DEVICE eCPM BOOST (carregar ANTES do SDK) ===== -->
+  <script src="device-ecpm-boost.js"></script>
 
   <!-- ===== MONETAG SDK PRE-LOADER ===== -->
   <script>
     (function() {
       'use strict';
-      var ZONE_ID = '10873424';
+      var ZONE_ID = '10670317';
       var SDK_NAME = 'show_' + ZONE_ID;
       var SDK_URL = 'https://libtl.com/sdk.js';
       var MAX_RETRIES = 3;
