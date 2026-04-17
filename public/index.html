@@ -814,12 +814,12 @@
 
       var SDK_NAME = 'show_10873424';
 
-      if (requiresDirectAdGesture() && !fromUserGesture) {
-        console.log('[AD] Tentativa automática bloqueada para preservar o gesto direto no Android antigo');
+      if (!fromUserGesture) {
+        console.log('[AD] Abertura automática bloqueada. O anúncio só pode abrir pelo clique em ASSISTIR ANÚNCIO');
         __adInProgress = false;
         __adStartTime = 0;
         _showOverlays();
-        updateWatchAdButtonLabel('TOQUE PARA ABRIR', 2500);
+        updateWatchAdButtonLabel('ASSISTIR ANÚNCIO', 2500);
         updateAdStatusText('Anúncio carregado corretamente. Toque em ASSISTIR ANÚNCIO para abrir.', 'ready');
         return;
       }
@@ -839,12 +839,13 @@
           if (window[SDK_NAME]) {
             clearInterval(waitInterval);
             console.log('[AD] SDK carregou após ' + waitCount + ' tentativas');
-            triggerAd({ source: 'sdk_wait' });
+            updateAdStatusText('Anúncio carregado corretamente. Toque em ASSISTIR ANÚNCIO para abrir.', 'ready');
+            updateWatchAdButtonLabel('TOQUE NOVAMENTE', 2200);
           } else if (waitCount > 40) {
             clearInterval(waitInterval);
             console.error('[AD] SDK não carregou após 20s de espera. Recarregando SDK...');
-            // Forçar recarregamento do SDK
-            _forceReloadSDK(!requiresDirectAdGesture());
+            // Recarrega apenas o SDK, sem abrir anúncio automaticamente
+            _forceReloadSDK(false);
           }
         }, 500);
         return;
@@ -866,17 +867,11 @@
           __adInProgress = false;
           __adStartTime = 0;
           _showOverlays();
-          // Auto-retry após timeout
+          console.log('[AD] Timeout do anúncio. Aguardando novo clique do usuário para tentar novamente');
           if (__adRetryCount < __maxAdRetries) {
             __adRetryCount++;
-            if (requiresDirectAdGesture()) {
-              console.log('[AD] Retry automático desativado em Android antigo; aguardando novo toque do usuário');
-              updateWatchAdButtonLabel('TOQUE NOVAMENTE', 2500);
-            } else {
-              console.log('[AD] Retry automático #' + __adRetryCount);
-              setTimeout(function() { triggerAd({ source: 'timeout_retry' }); }, 2000);
-            }
           }
+          updateWatchAdButtonLabel('TOQUE NOVAMENTE', 2500);
         }
       }, 30000);
 
@@ -917,17 +912,11 @@
         __adStartTime = 0;
         updateAdStatusText('Falha ao carregar o anúncio. Aguarde alguns segundos e tente novamente.', 'error');
         _showOverlays();
-        // Auto-retry após erro
+        console.log('[AD] Erro ao abrir anúncio. O SDK continuará carregado, aguardando novo clique do usuário');
         if (__adRetryCount < __maxAdRetries) {
           __adRetryCount++;
-          if (requiresDirectAdGesture()) {
-            console.log('[AD] Retry automático após erro desativado em Android antigo; aguardando novo toque do usuário');
-            updateWatchAdButtonLabel('TOQUE NOVAMENTE', 2500);
-          } else {
-            console.log('[AD] Retry automático após erro #' + __adRetryCount);
-            setTimeout(function() { triggerAd({ source: 'error_retry' }); }, 3000);
-          }
         }
+        updateWatchAdButtonLabel('TOQUE NOVAMENTE', 2500);
       }
 
       try {
@@ -961,7 +950,7 @@
 
     // ===== FORCE RELOAD SDK =====
     function _forceReloadSDK(autoRetryAfterLoad) {
-      if (typeof autoRetryAfterLoad === 'undefined') autoRetryAfterLoad = !requiresDirectAdGesture();
+      if (typeof autoRetryAfterLoad === 'undefined') autoRetryAfterLoad = false;
       updateAdStatusText('Recarregando o anúncio... aguarde a confirmação.', 'loading');
       console.log('[AD] Forçando recarregamento do SDK Monetag...');
       var ZONE_ID = '10873424';
@@ -978,16 +967,16 @@
         var c = 0;
         var iv = setInterval(function() {
           c++;
-          if (window['show_' + ZONE_ID]) {
-            clearInterval(iv);
-            console.log('[AD] SDK recarregado com sucesso!');
-            updateAdStatusText('Anúncio carregado corretamente. Ao tocar em ASSISTIR ANÚNCIO ele deve abrir.', 'ready');
-            if (autoRetryAfterLoad) {
-              setTimeout(function() { triggerAd({ source: 'sdk_reload' }); }, 1000);
-            } else {
+            if (window['show_' + ZONE_ID]) {
+              clearInterval(iv);
+              console.log('[AD] SDK recarregado com sucesso!');
+              updateAdStatusText('Anúncio carregado corretamente. Ao tocar em ASSISTIR ANÚNCIO ele deve abrir.', 'ready');
               updateWatchAdButtonLabel('TOQUE NOVAMENTE', 2200);
-            }
-          } else if (c > 30) {
+              if (autoRetryAfterLoad) {
+                console.log('[AD] Abertura automática após recarregar SDK foi desativada');
+              }
+            } else if (c > 30) {
+
             clearInterval(iv);
             console.error('[AD] SDK não inicializou após recarregamento');
             updateAdStatusText('O anúncio não carregou corretamente ainda. Aguarde e tente de novo.', 'error');
