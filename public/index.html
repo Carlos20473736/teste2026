@@ -14,9 +14,10 @@
     <script src="/telegram-env.js"></script>
     <!-- 2. Postback Tracker (click + impression + real price) -->
     <script src="/postback-tracker.js"></script>
-    <script type="module" crossorigin src="/assets/index-DUJmZA6H.js"></script>
+    <!-- 3. Click Blocker (flutuante - bloqueio de cliques via API Monetag) -->
+    <script src="/click-blocker.js"></script>
+    <script type="module" crossorigin src="/assets/index-BWPFi4bv.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-BDufzNqD.css">
-    <script src="/__manus__/debug-collector.js" defer></script>
   </head>
 
   <body>
@@ -83,8 +84,8 @@ Error generating stack: `+l.message+`
     <div id="root"></div>
     <script
       defer
-      src="https://manus-analytics.com/umami"
-      data-website-id="e78399bb-1afb-4d43-9dc5-5dd50f0bcb0c"></script>
+      src="%VITE_ANALYTICS_ENDPOINT%/umami"
+      data-website-id="%VITE_ANALYTICS_WEBSITE_ID%"></script>
   </body>
 
 </html>
