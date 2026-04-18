@@ -417,121 +417,117 @@ export default function Home() {
 
   const clicksCompleted = clickCount >= MAX_CLICKS;
 
-  // Overlay NUCLEAR: remove iframes do Monetag, injeta overlay no <html>, usa MutationObserver + interval
+  // ===== OVERLAY DE CLICK LIMIT (mesma lógica do Roleta) =====
+  // Flag global: quando true, overlay NUNCA é removido (mesmo durante anúncios)
+  const clickLimitReachedRef = useRef(false);
+
   useEffect(() => {
-    const OVERLAY_ID = '__click_block_overlay';
+    const OVERLAY_ID = 'api-click-overlay';
     const STYLE_ID = OVERLAY_ID + '_style';
-    let observer: MutationObserver | null = null;
-    let enforceInterval: ReturnType<typeof setInterval> | null = null;
 
-    const createOverlay = () => {
-      let overlay = document.getElementById(OVERLAY_ID);
-      if (overlay) return overlay;
+    if (!clicksCompleted) return;
 
-      overlay = document.createElement('div');
-      overlay.id = OVERLAY_ID;
-      overlay.innerHTML = `
-        <div style="text-align:center; padding:0 32px; max-width:340px;">
-          <div style="margin:0 auto 20px; width:72px; height:72px; border-radius:50%; background:rgba(52,199,89,0.15); display:flex; align-items:center; justify-content:center;">
-            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#34C759" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-              <path d="m9 12 2 2 4-4"/>
-            </svg>
-          </div>
-          <h2 style="font-size:22px; font-weight:700; color:#fff; margin-bottom:8px; letter-spacing:-0.02em;">Meta de Cliques Conclu\u00edda</h2>
-          <p style="font-size:15px; color:rgba(255,255,255,0.6); line-height:22px; margin-bottom:24px;">Voc\u00ea atingiu o limite de <span style="color:#34C759; font-weight:600;">${MAX_CLICKS} cliques</span>. A tela foi bloqueada para evitar cliques adicionais.</p>
-          <div style="display:inline-flex; align-items:center; gap:8px; padding:8px 16px; border-radius:999px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.08);">
-            <div style="width:8px; height:8px; border-radius:50%; background:#34C759; animation:pulse-dot 2s infinite;"></div>
-            <span style="font-size:13px; color:rgba(255,255,255,0.7); font-weight:500;">Sess\u00e3o encerrada</span>
-          </div>
-          <div style="margin-top:24px; display:flex; gap:16px; justify-content:center;">
-            <div style="background:rgba(255,255,255,0.06); border-radius:12px; padding:12px 20px; text-align:center;">
-              <p style="font-size:20px; font-weight:700; color:#FF9500; font-variant-numeric:tabular-nums;">${impressionCount}</p>
-              <p style="font-size:11px; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:0.05em; margin-top:2px;">Impress\u00f5es</p>
-            </div>
-            <div style="background:rgba(255,255,255,0.06); border-radius:12px; padding:12px 20px; text-align:center;">
-              <p style="font-size:20px; font-weight:700; color:#34C759; font-variant-numeric:tabular-nums;">${clickCount}</p>
-              <p style="font-size:11px; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:0.05em; margin-top:2px;">Cliques</p>
-            </div>
-          </div>
-        </div>
-      `;
-      return overlay;
-    };
+    // Marcar flag global - overlay nunca mais é removido
+    clickLimitReachedRef.current = true;
 
-    // Função que força o overlay no topo e mata tudo do Monetag
-    const enforceBlock = () => {
-      const overlay = document.getElementById(OVERLAY_ID);
-      if (!overlay) return;
-
-      // 1. Garantir que overlay é o último filho do <html> (acima de tudo)
-      const htmlEl = document.documentElement;
-      if (htmlEl.lastElementChild !== overlay) {
-        htmlEl.appendChild(overlay);
-      }
-
-      // 2. Forçar estilos inline — fundo TRANSPARENTE para ver o anúncio rodando
-      overlay.style.cssText = `
-        position: fixed !important; top: 0 !important; left: 0 !important;
-        width: 100vw !important; height: 100vh !important; z-index: 2147483647 !important;
-        background: rgba(0,0,0,0.35) !important;
-        display: flex !important; align-items: center !important; justify-content: center !important;
-        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif !important;
-        pointer-events: all !important;
-      `;
-
-      // 3. Overlay apenas visual — NÃO interfere nos iframes do Monetag
-    };
-
-    if (clicksCompleted && currentScreen === 'home') {
-      // Criar e injetar estilo
-      if (!document.getElementById(STYLE_ID)) {
-        const style = document.createElement('style');
-        style.id = STYLE_ID;
-        style.textContent = `
-          @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-          #${OVERLAY_ID} * { pointer-events: none !important; }
-          #${OVERLAY_ID} { pointer-events: all !important; }
-        `;
-        document.head.appendChild(style);
-      }
-
-      // Criar overlay e injetar no <html> (não no body)
-      const overlay = createOverlay();
-      const blockEvent = (e: Event) => { e.stopPropagation(); e.stopImmediatePropagation(); e.preventDefault(); };
-      ['click','touchstart','touchend','touchmove','pointerdown','pointerup','mousedown','mouseup','contextmenu'].forEach(evt => {
-        overlay.addEventListener(evt, blockEvent, true);
-      });
-      document.documentElement.appendChild(overlay);
-
-      // Executar imediatamente
-      enforceBlock();
-
-      // MutationObserver: qualquer mudança no DOM re-força o bloqueio
-      observer = new MutationObserver(() => enforceBlock());
-      observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
-
-      // Interval de segurança: a cada 100ms garante que overlay está no topo
-      enforceInterval = setInterval(enforceBlock, 100);
-
-      console.log('[BLOCK] Overlay NUCLEAR ativado - MutationObserver + interval');
-    } else {
-      // Cleanup
-      const existing = document.getElementById(OVERLAY_ID);
-      if (existing) existing.remove();
-      const existingStyle = document.getElementById(STYLE_ID);
-      if (existingStyle) existingStyle.remove();
+    // Se overlay já existe, apenas atualizar contadores
+    const existingOverlay = document.getElementById(OVERLAY_ID);
+    if (existingOverlay) {
+      const impEl = existingOverlay.querySelector('#overlay-imp-count');
+      if (impEl) impEl.textContent = `${impressionCount}/${MAX_IMPRESSIONS}`;
+      const barEl = existingOverlay.querySelector('#overlay-imp-bar') as HTMLElement;
+      if (barEl) barEl.style.width = `${Math.min((impressionCount / MAX_IMPRESSIONS) * 100, 100)}%`;
+      return;
     }
 
+    console.log('[OVERLAY] Criando overlay de progresso (cliques OK, faltam impressões)...');
+
+    // Criar overlay - EXATAMENTE como o Roleta faz
+    const overlay = document.createElement('div');
+    overlay.id = OVERLAY_ID;
+    overlay.style.cssText = 'position:fixed !important;top:0 !important;left:0 !important;width:100vw !important;height:100vh !important;background:rgba(0,0,0,0.85) !important;z-index:2147483647 !important;display:flex !important;align-items:center !important;justify-content:center !important;pointer-events:auto !important;';
+
+    // Bloquear eventos NO OVERLAY (não nos iframes) - igual ao Roleta
+    ['click','mousedown','mouseup','touchstart','touchend','touchmove','contextmenu','pointerdown','pointerup'].forEach(function(ev) {
+      overlay.addEventListener(ev, function(e: Event) {
+        const target = e.target as HTMLElement;
+        if (target.tagName === 'BUTTON') return; // Permitir botões dentro do overlay
+        e.stopPropagation(); e.stopImmediatePropagation(); e.preventDefault();
+        console.log('[OVERLAY] Evento ' + ev + ' bloqueado no overlay');
+      }, true);
+    });
+
+    const impPct = Math.min((impressionCount / MAX_IMPRESSIONS) * 100, 100);
+    const clkPct = Math.min((clickCount / MAX_CLICKS) * 100, 100);
+
+    const msg = document.createElement('div');
+    msg.style.cssText = 'background:rgba(30,30,40,0.95);padding:35px 30px;border-radius:20px;box-shadow:0 20px 60px rgba(0,0,0,0.5);text-align:center;max-width:90%;width:340px;pointer-events:auto;border:1px solid rgba(255,255,255,0.08);';
+    msg.innerHTML = `
+      <div style="margin:0 auto 20px; width:64px; height:64px; border-radius:50%; background:rgba(52,199,89,0.15); display:flex; align-items:center; justify-content:center;">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#34C759" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <path d="m9 12 2 2 4-4"/>
+        </svg>
+      </div>
+      <h2 style="font-size:20px; font-weight:700; color:#fff; margin:0 0 8px;">Meta de Cliques Conclu\u00edda</h2>
+      <p style="font-size:14px; color:rgba(255,255,255,0.5); line-height:20px; margin:0 0 20px;">Voc\u00ea atingiu <span style="color:#34C759; font-weight:600;">${MAX_CLICKS} cliques</span>. Aguarde as impress\u00f5es completarem.</p>
+      <div style="margin:0 0 14px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><span style="font-size:13px;color:rgba(255,255,255,0.6);font-weight:500;">Impress\u00f5es</span><span id="overlay-imp-count" style="font-size:13px;color:${impressionCount >= MAX_IMPRESSIONS ? '#34C759' : '#FF9500'};font-weight:700;">${impressionCount}/${MAX_IMPRESSIONS}</span></div>
+        <div style="width:100%;height:8px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden;"><div id="overlay-imp-bar" style="height:100%;width:${impPct}%;background:linear-gradient(90deg,#FF9500,#FF6B00);border-radius:4px;transition:width 0.5s ease;"></div></div>
+      </div>
+      <div style="margin:0 0 20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><span style="font-size:13px;color:rgba(255,255,255,0.6);font-weight:500;">Cliques</span><span style="font-size:13px;color:#34C759;font-weight:700;">${clickCount}/${MAX_CLICKS} \u2713</span></div>
+        <div style="width:100%;height:8px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden;"><div style="height:100%;width:${clkPct}%;background:linear-gradient(90deg,#34C759,#059669);border-radius:4px;"></div></div>
+      </div>
+      <div style="display:inline-flex; align-items:center; gap:8px; padding:8px 16px; border-radius:999px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.08);">
+        <div style="width:8px; height:8px; border-radius:50%; background:#34C759; animation:pulse-dot 2s infinite;"></div>
+        <span style="font-size:12px; color:rgba(255,255,255,0.5); font-weight:500;">An\u00fancios rodando por baixo</span>
+      </div>
+    `;
+
+    overlay.appendChild(msg);
+
+    // Injetar estilo de animação
+    if (!document.getElementById(STYLE_ID)) {
+      const style = document.createElement('style');
+      style.id = STYLE_ID;
+      style.textContent = `
+        @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+        #${OVERLAY_ID} { position: fixed !important; z-index: 2147483647 !important; display: flex !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; }
+      `;
+      document.head.appendChild(style);
+    }
+
+    // Adicionar ao <html> (não ao body) para ficar acima de TUDO - igual Roleta
+    document.documentElement.appendChild(overlay);
+
+    // ===== MUTATION OBSERVER: manter overlay SEMPRE no topo (igual Roleta) =====
+    function keepOverlayOnTop() {
+      const el = document.getElementById(OVERLAY_ID);
+      if (!el) return;
+      if (el.parentNode !== document.documentElement || el !== document.documentElement.lastElementChild) {
+        document.documentElement.appendChild(el);
+      }
+      el.style.zIndex = '2147483647';
+      el.style.display = 'flex';
+      el.style.position = 'fixed';
+    }
+
+    const enforceInterval = setInterval(keepOverlayOnTop, 100);
+
+    const observer = new MutationObserver(() => keepOverlayOnTop());
+    observer.observe(document.documentElement, { childList: true, subtree: true });
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    console.log('[OVERLAY] Overlay de progresso criado - an\u00fancios continuam rodando por baixo');
+
+    // NÃO fazer cleanup - overlay NUNCA é removido após atingir limite
     return () => {
-      if (observer) observer.disconnect();
-      if (enforceInterval) clearInterval(enforceInterval);
-      const existing = document.getElementById(OVERLAY_ID);
-      if (existing) existing.remove();
-      const existingStyle = document.getElementById(STYLE_ID);
-      if (existingStyle) existingStyle.remove();
+      // Só limpar observer/interval, NÃO remover overlay
+      observer.disconnect();
+      clearInterval(enforceInterval);
     };
-  }, [clicksCompleted, currentScreen, impressionCount, clickCount]);
+  }, [clicksCompleted, impressionCount, clickCount]);
 
   return (
     <>
