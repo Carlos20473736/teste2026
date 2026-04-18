@@ -482,8 +482,8 @@ export default function Home() {
     msg.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
         <div style="display:flex;align-items:center;gap:8px;">
-          <svg style="flex-shrink:0;min-width:18px;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF9500" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-          <span style="font-size:14px;font-weight:500;color:rgba(255,255,255,0.85);">Impressões</span>
+          <svg style="flex-shrink:0;display:block;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF9500" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+          <span style="font-size:14px;font-weight:500;color:rgba(255,255,255,0.85);line-height:18px;">Impressões</span>
         </div>
         <span style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.9);white-space:nowrap;">
           <span id="overlay-imp-count">${Math.min(impressionCount, MAX_IMPRESSIONS)}</span><span style="font-size:12px;color:rgba(255,255,255,0.4);"> / ${MAX_IMPRESSIONS}</span>
@@ -495,8 +495,8 @@ export default function Home() {
       <div style="height:1px;background:rgba(255,255,255,0.1);margin:14px 0;"></div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
         <div style="display:flex;align-items:center;gap:8px;">
-          <svg style="flex-shrink:0;min-width:18px;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34C759" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5"/></svg>
-          <span style="font-size:14px;font-weight:500;color:rgba(255,255,255,0.85);">Cliques</span>
+          <svg style="flex-shrink:0;display:block;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34C759" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5"/></svg>
+          <span style="font-size:14px;font-weight:500;color:rgba(255,255,255,0.85);line-height:18px;">Cliques</span>
         </div>
         <span style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.9);white-space:nowrap;">
           <span>${Math.min(clickCount, MAX_CLICKS)}</span><span style="font-size:12px;color:rgba(255,255,255,0.4);"> / ${MAX_CLICKS}</span>
