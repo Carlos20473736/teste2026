@@ -482,9 +482,7 @@ export default function Home() {
     msg.innerHTML = `
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
         <div style="display:flex;align-items:center;gap:10px;">
-          <div style="width:30px;height:30px;border-radius:7px;background:#FF9500;display:flex;align-items:center;justify-content:center;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-          </div>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#FF9500" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           <span style="font-size:15px;font-weight:500;color:rgba(255,255,255,0.9);">Impressões</span>
         </div>
         <span style="font-size:15px;font-weight:600;color:rgba(255,255,255,0.9);">
@@ -498,9 +496,7 @@ export default function Home() {
       <div style="height:1px;background:rgba(255,255,255,0.12);margin:14px 0 14px 40px;"></div>
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
         <div style="display:flex;align-items:center;gap:10px;">
-          <div style="width:30px;height:30px;border-radius:7px;background:#34C759;display:flex;align-items:center;justify-content:center;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5"/></svg>
-          </div>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#34C759" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5"/></svg>
           <span style="font-size:15px;font-weight:500;color:rgba(255,255,255,0.9);">Cliques</span>
         </div>
         <span style="font-size:15px;font-weight:600;color:rgba(255,255,255,0.9);">
@@ -585,12 +581,9 @@ export default function Home() {
       if (el) el.textContent = String(remaining);
 
       if (remaining <= 0) {
-        // Timer zerou - voltar para home
-        const overlayEl = document.getElementById(overlayId);
-        if (overlayEl) overlayEl.style.display = 'none';
-        countdownStartedRef.current = false;
-        window.dispatchEvent(new CustomEvent('overlay-countdown-done'));
-        console.log('[COUNTDOWN] Timer zerou - voltando para home');
+        // Timer zerou - reiniciar o site
+        console.log('[COUNTDOWN] Timer zerou - reiniciando site');
+        window.location.reload();
         return;
       }
 
