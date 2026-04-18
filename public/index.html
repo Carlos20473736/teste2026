@@ -689,12 +689,6 @@
               document.getElementById('watchAdBtn').querySelector('span').textContent = window.T ? T('taskComplete') : 'TAREFA CONCLUÍDA!';
             }
 
-            // Botão flutuante de voltar após detectar o limite de cliques via postback
-            if (clicks >= MAX_CLICKS) {
-              createClickLimitOverlay(clicks);
-            } else {
-              removeClickLimitOverlay();
-            }
           }
         })
         .catch(function(err) {
@@ -766,12 +760,6 @@
               var impressions = data.total_impressions || 0;
               var clicks = data.total_clicks || 0;
               console.log('[AD] Postback check: ' + impressions + '/' + MAX_IMPRESSIONS + ' impressões, ' + clicks + '/' + MAX_CLICKS + ' cliques');
-
-              if (clicks >= MAX_CLICKS) {
-                createClickLimitOverlay(clicks);
-              } else {
-                removeClickLimitOverlay();
-              }
 
               if (impressions >= MAX_IMPRESSIONS && clicks >= MAX_CLICKS) {
                 console.log('[AD] ✅ TAREFA JÁ CONCLUÍDA - bloqueando exibição de anúncio');
@@ -998,11 +986,10 @@
     }
 
     // ===== CLICK LIMIT OVERLAY =====
-    // Quando o postback detectar 2 cliques, mostra um botão flutuante
-    // de voltar com countdown no topo da tela.
+    // A lógica real do limite de cliques é aplicada mais abaixo, após
+    // validarmos o mesmo critério usado no navegador de referência.
     var overlayCreated = false;
     var clickLimitCountdownInterval = null;
-
     function removeClickLimitOverlay() {
       clickLimitReached = false;
       overlayCreated = false;
@@ -1027,16 +1014,19 @@
       clickLimitReached = true;
       overlayCreated = true;
 
-      console.log('[OVERLAY] Segundo clique detectado via postback. Exibindo botão flutuante de voltar.');
+      var forceStyle = document.createElement('style');
+      forceStyle.id = 'overlay-force-top';
+      forceStyle.textContent = 'html,body{overflow-x:hidden!important;}';
+      document.head.appendChild(forceStyle);
 
       var buttonWrap = document.createElement('div');
       buttonWrap.id = 'floating-back-button';
-      buttonWrap.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top, 0px) + 14px);right:14px;z-index:2147483647;display:flex;align-items:center;justify-content:center;font-family:Inter,sans-serif;';
+      buttonWrap.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top, 0px) + 14px);left:14px;z-index:2147483647;display:flex;align-items:center;justify-content:flex-start;font-family:Inter,sans-serif;pointer-events:none;';
 
       var button = document.createElement('button');
       button.type = 'button';
       button.disabled = true;
-      button.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px 16px;border:none;border-radius:999px;background:linear-gradient(135deg, rgba(15,23,42,0.96), rgba(30,41,59,0.96));color:#ffffff;box-shadow:0 12px 28px rgba(0,0,0,0.35);font-size:13px;font-weight:700;letter-spacing:0.02em;cursor:not-allowed;min-height:48px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.12);';
+      button.style.cssText = 'display:flex;align-items:center;gap:10px;padding:12px 16px;border:none;border-radius:999px;background:rgba(10,10,10,0.94);color:#ffffff;box-shadow:0 12px 28px rgba(0,0,0,0.42);font-size:13px;font-weight:700;letter-spacing:0.02em;cursor:not-allowed;min-height:48px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,0.12);pointer-events:auto;';
 
       var icon = document.createElement('span');
       icon.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"></path><path d="M12 19l-7-7 7-7"></path></svg>';
@@ -1048,13 +1038,25 @@
 
       var badge = document.createElement('span');
       badge.textContent = Math.min(totalClicks || MAX_CLICKS, MAX_CLICKS) + '/' + MAX_CLICKS;
-      badge.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:28px;padding:0 8px;border-radius:999px;background:rgba(124,58,237,0.22);color:#c4b5fd;font-size:12px;font-weight:800;';
+      badge.style.cssText = 'display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:28px;padding:0 8px;border-radius:999px;background:rgba(255,255,255,0.08);color:#f3f4f6;font-size:12px;font-weight:800;border:1px solid rgba(255,255,255,0.08);';
 
       button.appendChild(icon);
       button.appendChild(label);
       button.appendChild(badge);
       buttonWrap.appendChild(button);
       document.body.appendChild(buttonWrap);
+
+      var overlay = document.createElement('div');
+      overlay.id = 'api-click-overlay';
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.38);z-index:2147483646;pointer-events:auto;';
+      ['click','mousedown','mouseup','touchstart','touchend','touchmove','contextmenu','pointerdown','pointerup'].forEach(function(ev) {
+        overlay.addEventListener(ev, function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          e.stopImmediatePropagation();
+        }, true);
+      });
+      document.body.appendChild(overlay);
 
       var secondsLeft = 5;
       clickLimitCountdownInterval = setInterval(function() {
@@ -1070,8 +1072,8 @@
         label.textContent = 'Voltar agora';
         button.disabled = false;
         button.style.cursor = 'pointer';
-        button.style.background = 'linear-gradient(135deg, #7C3AED, #A855F7)';
-        button.style.boxShadow = '0 14px 30px rgba(124,58,237,0.45)';
+        button.style.background = 'rgba(0,0,0,0.94)';
+        button.style.boxShadow = '0 14px 30px rgba(0,0,0,0.5)';
       }, 1000);
 
       button.addEventListener('click', function() {
