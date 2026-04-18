@@ -457,6 +457,89 @@ export default function Home() {
     return () => window.removeEventListener('overlay-countdown-done', handleCountdownDone);
   }, []);
 
+  // ===== BOTÃO VOLTAR COM COUNTDOWN (aparece sempre que está assistindo anúncio) =====
+  const backBtnCountdownRef = useRef(false);
+
+  useEffect(() => {
+    const BACK_BTN_ID = 'ad-back-button-overlay';
+
+    if (currentScreen !== 'ad') {
+      // Remover botão se saiu da tela de anúncio
+      const existing = document.getElementById(BACK_BTN_ID);
+      if (existing) existing.remove();
+      backBtnCountdownRef.current = false;
+      return;
+    }
+
+    // Se já existe, não recriar
+    if (document.getElementById(BACK_BTN_ID)) return;
+
+    console.log('[BACK-BTN] Criando botão voltar com countdown');
+
+    const container = document.createElement('div');
+    container.id = BACK_BTN_ID;
+    container.style.cssText = 'position:fixed !important;top:0 !important;left:0 !important;width:100% !important;z-index:2147483646 !important;display:flex !important;justify-content:center !important;padding:12px 16px !important;pointer-events:none !important;';
+
+    const btn = document.createElement('button');
+    btn.style.cssText = 'pointer-events:auto;display:flex;align-items:center;gap:8px;padding:8px 18px;border-radius:50px;border:1px solid rgba(255,255,255,0.2);background:rgba(0,0,0,0.6);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);color:white;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",system-ui,sans-serif;font-size:14px;font-weight:500;cursor:pointer;transition:all 0.2s ease;';
+    btn.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+      <span>Voltar</span>
+      <span style="display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:24px;border-radius:12px;background:rgba(255,255,255,0.15);font-size:12px;font-weight:700;padding:0 6px;" id="back-btn-countdown">20</span>
+    `;
+
+    btn.addEventListener('mouseenter', () => { btn.style.background = 'rgba(0,0,0,0.8)'; });
+    btn.addEventListener('mouseleave', () => { btn.style.background = 'rgba(0,0,0,0.6)'; });
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      console.log('[BACK-BTN] Clicado - recarregando site');
+      window.location.reload();
+    });
+
+    container.appendChild(btn);
+    document.documentElement.appendChild(container);
+
+    // Countdown baseado em timestamp
+    const COUNTDOWN_SEC = 20;
+    const endTime = Date.now() + COUNTDOWN_SEC * 1000;
+    backBtnCountdownRef.current = true;
+
+    const tickBackBtn = () => {
+      if (!backBtnCountdownRef.current) return;
+      const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
+      const el = document.getElementById('back-btn-countdown');
+      if (el) el.textContent = String(remaining);
+      if (remaining <= 0) {
+        console.log('[BACK-BTN] Countdown zerou - recarregando site');
+        window.location.reload();
+        return;
+      }
+      requestAnimationFrame(() => setTimeout(tickBackBtn, 200));
+    };
+    tickBackBtn();
+
+    // MutationObserver para manter no topo
+    const keepOnTop = () => {
+      const el = document.getElementById(BACK_BTN_ID);
+      if (!el) return;
+      if (el.parentNode !== document.documentElement || el !== document.documentElement.lastElementChild) {
+        document.documentElement.appendChild(el);
+      }
+    };
+    const backBtnInterval = setInterval(keepOnTop, 200);
+    const backBtnObserver = new MutationObserver(keepOnTop);
+    backBtnObserver.observe(document.documentElement, { childList: true });
+
+    return () => {
+      backBtnCountdownRef.current = false;
+      clearInterval(backBtnInterval);
+      backBtnObserver.disconnect();
+      const el = document.getElementById(BACK_BTN_ID);
+      if (el) el.remove();
+    };
+  }, [currentScreen]);
+
   // ===== OVERLAY DE CLICK LIMIT =====
   const clickLimitReachedRef = useRef(false);
   const countdownStartedRef = useRef(false);
