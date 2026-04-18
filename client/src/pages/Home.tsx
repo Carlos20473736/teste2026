@@ -480,11 +480,7 @@ export default function Home() {
         pointer-events: all !important;
       `;
 
-      // 3. Rebaixar pointer-events dos iframes do Monetag (sem esconder)
-      document.querySelectorAll('iframe').forEach((el) => {
-        const htmlElement = el as HTMLElement;
-        htmlElement.style.setProperty('pointer-events', 'none', 'important');
-      });
+      // 3. Overlay apenas visual — NÃO interfere nos iframes do Monetag
     };
 
     if (clicksCompleted && currentScreen === 'home') {
