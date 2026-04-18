@@ -95,7 +95,7 @@ function sendPostback(eventType: "impression" | "click") {
     .catch((err) => console.error(`[POSTBACK] Erro:`, err));
 }
 
-// Space ecosystem background — stars, nebulae, shooting stars
+// Starry sky background with real star shapes (4-point cross rays + glow)
 function StarryBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -108,8 +108,9 @@ function StarryBackground() {
     let animationId: number;
 
     interface Star {
-      x: number; y: number; r: number; opacity: number;
+      x: number; y: number; size: number; opacity: number;
       twinkleSpeed: number; phase: number; color: string;
+      rayLen: number; // length of the cross rays
     }
     interface ShootingStar {
       x: number; y: number; len: number; speed: number;
@@ -126,59 +127,100 @@ function StarryBackground() {
     resize();
     window.addEventListener('resize', resize);
 
-    // Star colors for realism
     const starColors = [
-      '255,255,255',    // white
-      '200,220,255',    // blue-white
-      '255,240,220',    // warm white
-      '180,200,255',    // light blue
-      '255,220,180',    // light orange
+      '255,255,255',
+      '210,230,255',
+      '255,245,230',
+      '190,210,255',
+      '255,225,190',
     ];
 
-    // Create stars with depth layers
-    const starCount = Math.floor((canvas.width * canvas.height) / 3500);
+    // Create stars with varying sizes
+    const starCount = Math.floor((canvas.width * canvas.height) / 3000);
     for (let i = 0; i < starCount; i++) {
-      const layer = Math.random(); // 0=far, 1=close
+      const layer = Math.random();
+      let size: number, rayLen: number, opacity: number;
+      if (layer < 0.65) {
+        // Tiny distant stars — small dots
+        size = Math.random() * 0.6 + 0.3;
+        rayLen = 0;
+        opacity = Math.random() * 0.35 + 0.1;
+      } else if (layer < 0.9) {
+        // Medium stars — small cross rays
+        size = Math.random() * 1 + 0.8;
+        rayLen = Math.random() * 4 + 3;
+        opacity = Math.random() * 0.5 + 0.3;
+      } else {
+        // Bright stars — prominent cross rays + glow
+        size = Math.random() * 1.5 + 1.5;
+        rayLen = Math.random() * 10 + 8;
+        opacity = Math.random() * 0.4 + 0.5;
+      }
       stars.push({
         x: Math.random() * canvas.width,
         y: Math.random() * canvas.height,
-        r: layer < 0.6 ? Math.random() * 0.8 + 0.2 : layer < 0.9 ? Math.random() * 1.2 + 0.5 : Math.random() * 2 + 1,
-        opacity: layer < 0.6 ? Math.random() * 0.4 + 0.1 : Math.random() * 0.6 + 0.3,
-        twinkleSpeed: Math.random() * 0.0006 + 0.0001,
+        size,
+        rayLen,
+        opacity,
+        twinkleSpeed: Math.random() * 0.0008 + 0.0001,
         phase: Math.random() * Math.PI * 2,
         color: starColors[Math.floor(Math.random() * starColors.length)],
       });
     }
 
-    // Draw nebula clouds (static, drawn once to offscreen canvas)
-    const nebulaCanvas = document.createElement('canvas');
-    nebulaCanvas.width = canvas.width;
-    nebulaCanvas.height = canvas.height;
-    const nCtx = nebulaCanvas.getContext('2d')!;
+    // Draw a single star with cross rays
+    function drawStar(x: number, y: number, size: number, rayLen: number, color: string, alpha: number) {
+      if (!ctx) return;
+      // Core dot
+      ctx.beginPath();
+      ctx.arc(x, y, size, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${color}, ${alpha})`;
+      ctx.fill();
 
-    const drawNebula = () => {
-      // Subtle purple/blue nebula patches
-      const nebulae = [
-        { x: canvas.width * 0.15, y: canvas.height * 0.2, rx: 200, ry: 120, color: '60,20,120', opacity: 0.04 },
-        { x: canvas.width * 0.8, y: canvas.height * 0.7, rx: 250, ry: 150, color: '20,40,100', opacity: 0.05 },
-        { x: canvas.width * 0.5, y: canvas.height * 0.5, rx: 300, ry: 180, color: '30,15,80', opacity: 0.03 },
-        { x: canvas.width * 0.3, y: canvas.height * 0.8, rx: 180, ry: 100, color: '15,30,90', opacity: 0.04 },
-        { x: canvas.width * 0.7, y: canvas.height * 0.25, rx: 220, ry: 130, color: '50,10,80', opacity: 0.03 },
-      ];
-      for (const n of nebulae) {
-        const grad = nCtx.createRadialGradient(n.x, n.y, 0, n.x, n.y, Math.max(n.rx, n.ry));
-        grad.addColorStop(0, `rgba(${n.color}, ${n.opacity})`);
-        grad.addColorStop(0.5, `rgba(${n.color}, ${n.opacity * 0.5})`);
-        grad.addColorStop(1, 'rgba(0,0,0,0)');
-        nCtx.fillStyle = grad;
-        nCtx.beginPath();
-        nCtx.ellipse(n.x, n.y, n.rx, n.ry, Math.random() * Math.PI, 0, Math.PI * 2);
-        nCtx.fill();
+      if (rayLen > 0) {
+        // Vertical ray
+        const vGrad = ctx.createLinearGradient(x, y - rayLen, x, y + rayLen);
+        vGrad.addColorStop(0, `rgba(${color}, 0)`);
+        vGrad.addColorStop(0.4, `rgba(${color}, ${alpha * 0.6})`);
+        vGrad.addColorStop(0.5, `rgba(${color}, ${alpha * 0.9})`);
+        vGrad.addColorStop(0.6, `rgba(${color}, ${alpha * 0.6})`);
+        vGrad.addColorStop(1, `rgba(${color}, 0)`);
+        ctx.strokeStyle = vGrad;
+        ctx.lineWidth = size * 0.4;
+        ctx.beginPath();
+        ctx.moveTo(x, y - rayLen);
+        ctx.lineTo(x, y + rayLen);
+        ctx.stroke();
+
+        // Horizontal ray
+        const hGrad = ctx.createLinearGradient(x - rayLen, y, x + rayLen, y);
+        hGrad.addColorStop(0, `rgba(${color}, 0)`);
+        hGrad.addColorStop(0.4, `rgba(${color}, ${alpha * 0.6})`);
+        hGrad.addColorStop(0.5, `rgba(${color}, ${alpha * 0.9})`);
+        hGrad.addColorStop(0.6, `rgba(${color}, ${alpha * 0.6})`);
+        hGrad.addColorStop(1, `rgba(${color}, 0)`);
+        ctx.strokeStyle = hGrad;
+        ctx.lineWidth = size * 0.4;
+        ctx.beginPath();
+        ctx.moveTo(x - rayLen, y);
+        ctx.lineTo(x + rayLen, y);
+        ctx.stroke();
+
+        // Soft glow around bright stars
+        if (size > 1.5) {
+          const glowGrad = ctx.createRadialGradient(x, y, 0, x, y, rayLen * 1.5);
+          glowGrad.addColorStop(0, `rgba(${color}, ${alpha * 0.15})`);
+          glowGrad.addColorStop(0.5, `rgba(${color}, ${alpha * 0.05})`);
+          glowGrad.addColorStop(1, `rgba(${color}, 0)`);
+          ctx.fillStyle = glowGrad;
+          ctx.beginPath();
+          ctx.arc(x, y, rayLen * 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
       }
-    };
-    drawNebula();
+    }
 
-    // Spawn shooting star occasionally
+    // Shooting stars
     const maybeSpawnShootingStar = () => {
       if (Math.random() < 0.003 && shootingStars.length < 2) {
         shootingStars.push({
@@ -197,24 +239,11 @@ function StarryBackground() {
     const animate = (time: number) => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Draw nebulae
-      ctx.drawImage(nebulaCanvas, 0, 0);
-
       // Draw stars
       for (const star of stars) {
-        const twinkle = Math.sin(time * star.twinkleSpeed + star.phase) * 0.3 + 0.7;
+        const twinkle = Math.sin(time * star.twinkleSpeed + star.phase) * 0.35 + 0.65;
         const alpha = star.opacity * twinkle;
-        ctx.beginPath();
-        ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
-        ctx.fillStyle = `rgba(${star.color}, ${alpha})`;
-        ctx.fill();
-        // Glow for bright stars
-        if (star.r > 1.2) {
-          ctx.beginPath();
-          ctx.arc(star.x, star.y, star.r * 3, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(${star.color}, ${alpha * 0.08})`;
-          ctx.fill();
-        }
+        drawStar(star.x, star.y, star.size, star.rayLen * twinkle, star.color, alpha);
       }
 
       // Shooting stars
@@ -240,7 +269,6 @@ function StarryBackground() {
         ctx.moveTo(tailX, tailY);
         ctx.lineTo(s.x, s.y);
         ctx.stroke();
-        // Head glow
         ctx.beginPath();
         ctx.arc(s.x, s.y, 2, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(255,255,255,${s.opacity})`;
