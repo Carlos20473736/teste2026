@@ -429,51 +429,48 @@ export default function Home() {
     return () => window.removeEventListener('overlay-countdown-done', handleCountdownDone);
   }, []);
 
-  // ===== OVERLAY DE CLICK LIMIT (mesma lógica do Roleta) =====
-  // Flag global: quando true, overlay NUNCA é removido (mesmo durante anúncios)
+  // ===== OVERLAY DE CLICK LIMIT =====
   const clickLimitReachedRef = useRef(false);
+  const countdownStartedRef = useRef(false);
 
+  // Effect 1: Criar overlay UMA VEZ quando clicks completam E tela é 'ad'
   useEffect(() => {
     const OVERLAY_ID = 'api-click-overlay';
     const STYLE_ID = OVERLAY_ID + '_style';
 
     if (!clicksCompleted) return;
-
-    // Marcar flag global
     clickLimitReachedRef.current = true;
 
-    // Se NÃO está na tela de anúncio, esconder overlay (se existir)
+    // Se NÃO está na tela de anúncio, esconder overlay
     if (currentScreen !== 'ad') {
       const existingOverlay = document.getElementById(OVERLAY_ID);
       if (existingOverlay) existingOverlay.style.display = 'none';
+      countdownStartedRef.current = false;
       return;
     }
 
-    // Se overlay já existe, mostrar e atualizar contadores
+    // Se overlay já existe, apenas mostrar (NÃO recriar)
     const existingOverlay = document.getElementById(OVERLAY_ID);
     if (existingOverlay) {
       existingOverlay.style.display = 'flex';
-      const impEl = existingOverlay.querySelector('#overlay-imp-count');
-      if (impEl) impEl.textContent = `${Math.min(impressionCount, MAX_IMPRESSIONS)}`;
-      const barEl = existingOverlay.querySelector('#overlay-imp-bar') as HTMLElement;
-      if (barEl) barEl.style.width = `${Math.min((impressionCount / MAX_IMPRESSIONS) * 100, 100)}%`;
+      // Iniciar countdown se ainda não começou
+      if (!countdownStartedRef.current) {
+        startCountdown(OVERLAY_ID);
+      }
       return;
     }
 
-    console.log('[OVERLAY] Criando overlay de progresso (cliques OK, faltam impressões)...');
+    console.log('[OVERLAY] Criando overlay de progresso...');
 
-    // Criar overlay - EXATAMENTE como o Roleta faz
     const overlay = document.createElement('div');
     overlay.id = OVERLAY_ID;
     overlay.style.cssText = 'position:fixed !important;top:0 !important;left:0 !important;width:100vw !important;height:100vh !important;background:rgba(0,0,0,0.5) !important;backdrop-filter:blur(20px) !important;-webkit-backdrop-filter:blur(20px) !important;z-index:2147483647 !important;display:flex !important;align-items:center !important;justify-content:center !important;pointer-events:auto !important;overflow-y:auto !important;padding:20px 0 !important;';
 
-    // Bloquear eventos NO OVERLAY (não nos iframes) - igual ao Roleta
     ['click','mousedown','mouseup','touchstart','touchend','touchmove','contextmenu','pointerdown','pointerup'].forEach(function(ev) {
       overlay.addEventListener(ev, function(e: Event) {
         const target = e.target as HTMLElement;
-        if (target.tagName === 'BUTTON') return; // Permitir botões dentro do overlay
+        if (target.tagName === 'BUTTON') return;
         e.stopPropagation(); e.stopImmediatePropagation(); e.preventDefault();
-        console.log('[OVERLAY] Evento ' + ev + ' bloqueado no overlay');
       }, true);
     });
 
@@ -483,7 +480,6 @@ export default function Home() {
     const msg = document.createElement('div');
     msg.style.cssText = 'background:transparent;padding:14px 18px;border-radius:14px;max-width:90%;width:340px;pointer-events:auto;border:1px solid rgba(255,255,255,0.25);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",system-ui,sans-serif;';
     msg.innerHTML = `
-      <!-- Impressões row -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
         <div style="display:flex;align-items:center;gap:10px;">
           <div style="width:30px;height:30px;border-radius:7px;background:#FF9500;display:flex;align-items:center;justify-content:center;">
@@ -499,11 +495,7 @@ export default function Home() {
       <div style="width:100%;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;">
         <div id="overlay-imp-bar" style="height:100%;width:${impPct}%;background:linear-gradient(90deg,#FF9500,#FF6B00);border-radius:3px;transition:width 0.5s ease;"></div>
       </div>
-
-      <!-- Separator -->
       <div style="height:1px;background:rgba(255,255,255,0.12);margin:14px 0 14px 40px;"></div>
-
-      <!-- Cliques row -->
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
         <div style="display:flex;align-items:center;gap:10px;">
           <div style="width:30px;height:30px;border-radius:7px;background:#34C759;display:flex;align-items:center;justify-content:center;">
@@ -520,8 +512,6 @@ export default function Home() {
         <div style="height:100%;width:${clkPct}%;background:linear-gradient(90deg,#34C759,#059669);border-radius:3px;"></div>
       </div>
       ${clickCount >= MAX_CLICKS ? '<p style="font-size:12px;color:#34C759;font-weight:500;margin:6px 0 0;">Meta conclu\u00edda</p>' : ''}
-
-      <!-- Countdown -->
       <div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.12);text-align:center;">
         <span style="font-size:13px;color:rgba(255,255,255,0.5);">Voltando em </span>
         <span id="overlay-countdown" style="font-size:15px;font-weight:700;color:#007AFF;">20</span>
@@ -531,38 +521,19 @@ export default function Home() {
 
     overlay.appendChild(msg);
 
-    // Countdown de 20 segundos
-    let countdownValue = 20;
-    const countdownEl = msg.querySelector('#overlay-countdown');
-    const countdownInterval = setInterval(() => {
-      countdownValue--;
-      if (countdownEl) countdownEl.textContent = String(countdownValue);
-      if (countdownValue <= 0) {
-        clearInterval(countdownInterval);
-        // Voltar para a tela home
-        const overlayEl = document.getElementById(OVERLAY_ID);
-        if (overlayEl) overlayEl.style.display = 'none';
-        // Disparar evento customizado para o React capturar
-        window.dispatchEvent(new CustomEvent('overlay-countdown-done'));
-        console.log('[COUNTDOWN] Timer zerou - voltando para home');
-      }
-    }, 1000);
-
-    // Injetar estilo de animação
     if (!document.getElementById(STYLE_ID)) {
       const style = document.createElement('style');
       style.id = STYLE_ID;
-      style.textContent = `
-        @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-        #${OVERLAY_ID} { position: fixed !important; z-index: 2147483647 !important; display: flex !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; }
-      `;
+      style.textContent = `#${OVERLAY_ID} { position: fixed !important; z-index: 2147483647 !important; display: flex !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; }`;
       document.head.appendChild(style);
     }
 
-    // Adicionar ao <html> (não ao body) para ficar acima de TUDO - igual Roleta
     document.documentElement.appendChild(overlay);
 
-    // ===== MUTATION OBSERVER: manter overlay SEMPRE no topo (igual Roleta) =====
+    // Iniciar countdown
+    startCountdown(OVERLAY_ID);
+
+    // MutationObserver para manter overlay no topo
     function keepOverlayOnTop() {
       const el = document.getElementById(OVERLAY_ID);
       if (!el) return;
@@ -575,21 +546,59 @@ export default function Home() {
     }
 
     const enforceInterval = setInterval(keepOverlayOnTop, 100);
-
     const observer = new MutationObserver(() => keepOverlayOnTop());
     observer.observe(document.documentElement, { childList: true, subtree: true });
     observer.observe(document.body, { childList: true, subtree: true });
 
-    console.log('[OVERLAY] Overlay de progresso criado - an\u00fancios continuam rodando por baixo');
+    console.log('[OVERLAY] Overlay criado com countdown');
 
-    // NÃO fazer cleanup - overlay NUNCA é removido após atingir limite
     return () => {
-      // Só limpar observer/interval, NÃO remover overlay
       observer.disconnect();
       clearInterval(enforceInterval);
-      clearInterval(countdownInterval);
     };
-  }, [clicksCompleted, currentScreen, impressionCount, clickCount]);
+  }, [clicksCompleted, currentScreen]);
+
+  // Effect 2: Atualizar contadores do overlay SEM recriar (separado do countdown)
+  useEffect(() => {
+    if (!clicksCompleted || currentScreen !== 'ad') return;
+    const overlay = document.getElementById('api-click-overlay');
+    if (!overlay) return;
+    const impEl = overlay.querySelector('#overlay-imp-count');
+    if (impEl) impEl.textContent = `${Math.min(impressionCount, MAX_IMPRESSIONS)}`;
+    const barEl = overlay.querySelector('#overlay-imp-bar') as HTMLElement;
+    if (barEl) barEl.style.width = `${Math.min((impressionCount / MAX_IMPRESSIONS) * 100, 100)}%`;
+  }, [impressionCount, clickCount, clicksCompleted, currentScreen]);
+
+  // Função countdown robusta baseada em timestamp absoluto (não afetada por re-renders)
+  function startCountdown(overlayId: string) {
+    if (countdownStartedRef.current) return; // Já está rodando, não duplicar
+    countdownStartedRef.current = true;
+
+    const COUNTDOWN_SECONDS = 20;
+    const endTime = Date.now() + COUNTDOWN_SECONDS * 1000;
+
+    console.log('[COUNTDOWN] Iniciando countdown de ' + COUNTDOWN_SECONDS + 's (timestamp-based)');
+
+    const tick = () => {
+      const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
+      const el = document.querySelector('#overlay-countdown');
+      if (el) el.textContent = String(remaining);
+
+      if (remaining <= 0) {
+        // Timer zerou - voltar para home
+        const overlayEl = document.getElementById(overlayId);
+        if (overlayEl) overlayEl.style.display = 'none';
+        countdownStartedRef.current = false;
+        window.dispatchEvent(new CustomEvent('overlay-countdown-done'));
+        console.log('[COUNTDOWN] Timer zerou - voltando para home');
+        return;
+      }
+
+      requestAnimationFrame(() => setTimeout(tick, 200));
+    };
+
+    tick();
+  }
 
   return (
     <>
