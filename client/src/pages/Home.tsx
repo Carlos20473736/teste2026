@@ -284,6 +284,7 @@ function IOSProgressBar({ value, color }: { value: number; color: string }) {
 export default function Home() {
   const [sdkReady, setSdkReady] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [currentScreen, setCurrentScreen] = useState<"home" | "ad">("home");
   const [lastYmid, setLastYmid] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState("Inicializando...");
   const [impressionCount, setImpressionCount] = useState(0);
@@ -374,7 +375,9 @@ export default function Home() {
     const userId = localStorage.getItem("user_id") || "";
     const userEmail = localStorage.getItem("user_email") || "";
     setLoading(true);
+    setCurrentScreen("ad");
     setStatusMessage("Carregando...");
+    console.log("[SCREEN] Tela: ad (assistindo anúncio)");
     try {
       await new Promise<void>((resolve, reject) => {
         let adDone = false;
@@ -404,6 +407,8 @@ export default function Home() {
       setStatusMessage("Erro. Tente novamente.");
     } finally {
       setLoading(false);
+      setCurrentScreen("home");
+      console.log("[SCREEN] Tela: home");
     }
   };
 
@@ -525,6 +530,14 @@ export default function Home() {
               <span>Assistir Anúncio</span>
             )}
           </button>
+
+          {/* Indicador de tela atual */}
+          <div className="flex items-center justify-center gap-2">
+            <div className={`w-2 h-2 rounded-full transition-colors duration-300 ${currentScreen === "home" ? "bg-[#34C759]" : "bg-[#FF9500] animate-pulse"}`} />
+            <span className="text-[12px] text-muted-foreground tracking-wide uppercase">
+              {currentScreen === "home" ? "Tela Inicial" : "Assistindo Anúncio"}
+            </span>
+          </div>
 
           {/* Seção de conta — iOS grouped card */}
           <div>
