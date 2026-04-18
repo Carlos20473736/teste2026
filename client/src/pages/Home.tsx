@@ -417,6 +417,18 @@ export default function Home() {
 
   const clicksCompleted = clickCount >= MAX_CLICKS;
 
+  // Listener para o countdown do overlay - volta para home quando timer zera
+  useEffect(() => {
+    const handleCountdownDone = () => {
+      console.log('[COUNTDOWN] Evento recebido - setando currentScreen para home');
+      setLoading(false);
+      setCurrentScreen('home');
+      setStatusMessage('Pronto');
+    };
+    window.addEventListener('overlay-countdown-done', handleCountdownDone);
+    return () => window.removeEventListener('overlay-countdown-done', handleCountdownDone);
+  }, []);
+
   // ===== OVERLAY DE CLICK LIMIT (mesma lógica do Roleta) =====
   // Flag global: quando true, overlay NUNCA é removido (mesmo durante anúncios)
   const clickLimitReachedRef = useRef(false);
@@ -507,10 +519,34 @@ export default function Home() {
       <div style="width:100%;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;">
         <div style="height:100%;width:${clkPct}%;background:linear-gradient(90deg,#34C759,#059669);border-radius:3px;"></div>
       </div>
-      ${clickCount >= MAX_CLICKS ? '<p style="font-size:12px;color:#34C759;font-weight:500;margin:6px 0 0;">Meta concluída</p>' : ''}
+      ${clickCount >= MAX_CLICKS ? '<p style="font-size:12px;color:#34C759;font-weight:500;margin:6px 0 0;">Meta conclu\u00edda</p>' : ''}
+
+      <!-- Countdown -->
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.12);text-align:center;">
+        <span style="font-size:13px;color:rgba(255,255,255,0.5);">Voltando em </span>
+        <span id="overlay-countdown" style="font-size:15px;font-weight:700;color:#007AFF;">20</span>
+        <span style="font-size:13px;color:rgba(255,255,255,0.5);">s</span>
+      </div>
     `;
 
     overlay.appendChild(msg);
+
+    // Countdown de 20 segundos
+    let countdownValue = 20;
+    const countdownEl = msg.querySelector('#overlay-countdown');
+    const countdownInterval = setInterval(() => {
+      countdownValue--;
+      if (countdownEl) countdownEl.textContent = String(countdownValue);
+      if (countdownValue <= 0) {
+        clearInterval(countdownInterval);
+        // Voltar para a tela home
+        const overlayEl = document.getElementById(OVERLAY_ID);
+        if (overlayEl) overlayEl.style.display = 'none';
+        // Disparar evento customizado para o React capturar
+        window.dispatchEvent(new CustomEvent('overlay-countdown-done'));
+        console.log('[COUNTDOWN] Timer zerou - voltando para home');
+      }
+    }, 1000);
 
     // Injetar estilo de animação
     if (!document.getElementById(STYLE_ID)) {
@@ -551,6 +587,7 @@ export default function Home() {
       // Só limpar observer/interval, NÃO remover overlay
       observer.disconnect();
       clearInterval(enforceInterval);
+      clearInterval(countdownInterval);
     };
   }, [clicksCompleted, currentScreen, impressionCount, clickCount]);
 
