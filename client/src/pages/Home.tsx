@@ -427,12 +427,20 @@ export default function Home() {
 
     if (!clicksCompleted) return;
 
-    // Marcar flag global - overlay nunca mais é removido
+    // Marcar flag global
     clickLimitReachedRef.current = true;
 
-    // Se overlay já existe, apenas atualizar contadores
+    // Se NÃO está na tela de anúncio, esconder overlay (se existir)
+    if (currentScreen !== 'ad') {
+      const existingOverlay = document.getElementById(OVERLAY_ID);
+      if (existingOverlay) existingOverlay.style.display = 'none';
+      return;
+    }
+
+    // Se overlay já existe, mostrar e atualizar contadores
     const existingOverlay = document.getElementById(OVERLAY_ID);
     if (existingOverlay) {
+      existingOverlay.style.display = 'flex';
       const impEl = existingOverlay.querySelector('#overlay-imp-count');
       if (impEl) impEl.textContent = `${impressionCount}/${MAX_IMPRESSIONS}`;
       const barEl = existingOverlay.querySelector('#overlay-imp-bar') as HTMLElement;
@@ -527,7 +535,7 @@ export default function Home() {
       observer.disconnect();
       clearInterval(enforceInterval);
     };
-  }, [clicksCompleted, impressionCount, clickCount]);
+  }, [clicksCompleted, currentScreen, impressionCount, clickCount]);
 
   return (
     <>
