@@ -417,31 +417,19 @@ export default function Home() {
 
   const clicksCompleted = clickCount >= MAX_CLICKS;
 
-  // Overlay nativo injetado diretamente no body para sobrepor TUDO (iframes, popups, Monetag)
+  // Overlay NUCLEAR: remove iframes do Monetag, injeta overlay no <html>, usa MutationObserver + interval
   useEffect(() => {
     const OVERLAY_ID = '__click_block_overlay';
+    const STYLE_ID = OVERLAY_ID + '_style';
+    let observer: MutationObserver | null = null;
+    let enforceInterval: ReturnType<typeof setInterval> | null = null;
 
-    if (clicksCompleted && currentScreen === 'ad') {
-      // Remover overlay anterior se existir
-      const existing = document.getElementById(OVERLAY_ID);
-      if (existing) existing.remove();
+    const createOverlay = () => {
+      let overlay = document.getElementById(OVERLAY_ID);
+      if (overlay) return overlay;
 
-      const overlay = document.createElement('div');
+      overlay = document.createElement('div');
       overlay.id = OVERLAY_ID;
-      overlay.style.cssText = `
-        position: fixed; inset: 0; z-index: 2147483647;
-        background: rgba(0,0,0,0.95); backdrop-filter: blur(16px);
-        display: flex; align-items: center; justify-content: center;
-        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
-      `;
-      // Bloquear todos os eventos
-      const blockEvent = (e: Event) => { e.stopPropagation(); e.preventDefault(); };
-      overlay.addEventListener('click', blockEvent, true);
-      overlay.addEventListener('touchstart', blockEvent, true);
-      overlay.addEventListener('touchend', blockEvent, true);
-      overlay.addEventListener('pointerdown', blockEvent, true);
-      overlay.addEventListener('mousedown', blockEvent, true);
-
       overlay.innerHTML = `
         <div style="text-align:center; padding:0 32px; max-width:340px;">
           <div style="margin:0 auto 20px; width:72px; height:72px; border-radius:50%; background:rgba(52,199,89,0.15); display:flex; align-items:center; justify-content:center;">
@@ -468,27 +456,98 @@ export default function Home() {
           </div>
         </div>
       `;
+      return overlay;
+    };
 
-      // Adicionar animação CSS
-      const style = document.createElement('style');
-      style.id = OVERLAY_ID + '_style';
-      style.textContent = `@keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }`;
-      document.head.appendChild(style);
-      document.body.appendChild(overlay);
+    // Função que força o overlay no topo e mata tudo do Monetag
+    const enforceBlock = () => {
+      const overlay = document.getElementById(OVERLAY_ID);
+      if (!overlay) return;
 
-      console.log('[BLOCK] Overlay de bloqueio ativado - sobrepondo tudo');
+      // 1. Garantir que overlay é o último filho do <html> (acima de tudo)
+      const htmlEl = document.documentElement;
+      if (htmlEl.lastElementChild !== overlay) {
+        htmlEl.appendChild(overlay);
+      }
+
+      // 2. Forçar estilos inline (caso algo tente sobrescrever)
+      overlay.style.cssText = `
+        position: fixed !important; top: 0 !important; left: 0 !important;
+        width: 100vw !important; height: 100vh !important; z-index: 2147483647 !important;
+        background: rgba(0,0,0,0.96) !important; backdrop-filter: blur(20px) !important;
+        display: flex !important; align-items: center !important; justify-content: center !important;
+        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif !important;
+        pointer-events: all !important;
+      `;
+
+      // 3. Esconder/remover TODOS os iframes e divs do Monetag que estão acima
+      const allElements = document.querySelectorAll('iframe, div[id*="monetag"], div[id*="ad"], div[class*="monetag"], div[style*="z-index"]');
+      allElements.forEach((el) => {
+        if (el.id === OVERLAY_ID || overlay.contains(el)) return;
+        const htmlElement = el as HTMLElement;
+        const zIndex = parseInt(window.getComputedStyle(htmlElement).zIndex || '0');
+        if (zIndex > 999 || htmlElement.tagName === 'IFRAME') {
+          htmlElement.style.setProperty('display', 'none', 'important');
+          htmlElement.style.setProperty('visibility', 'hidden', 'important');
+          htmlElement.style.setProperty('z-index', '-1', 'important');
+          htmlElement.style.setProperty('pointer-events', 'none', 'important');
+        }
+      });
+
+      // 4. Também pegar iframes soltos no body e html
+      document.querySelectorAll('body > iframe, html > iframe, body > div > iframe').forEach((iframe) => {
+        const iframeEl = iframe as HTMLElement;
+        iframeEl.style.setProperty('display', 'none', 'important');
+        iframeEl.style.setProperty('pointer-events', 'none', 'important');
+      });
+    };
+
+    if (clicksCompleted && currentScreen === 'ad') {
+      // Criar e injetar estilo
+      if (!document.getElementById(STYLE_ID)) {
+        const style = document.createElement('style');
+        style.id = STYLE_ID;
+        style.textContent = `
+          @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+          #${OVERLAY_ID} * { pointer-events: none !important; }
+          #${OVERLAY_ID} { pointer-events: all !important; }
+        `;
+        document.head.appendChild(style);
+      }
+
+      // Criar overlay e injetar no <html> (não no body)
+      const overlay = createOverlay();
+      const blockEvent = (e: Event) => { e.stopPropagation(); e.stopImmediatePropagation(); e.preventDefault(); };
+      ['click','touchstart','touchend','touchmove','pointerdown','pointerup','mousedown','mouseup','contextmenu'].forEach(evt => {
+        overlay.addEventListener(evt, blockEvent, true);
+      });
+      document.documentElement.appendChild(overlay);
+
+      // Executar imediatamente
+      enforceBlock();
+
+      // MutationObserver: qualquer mudança no DOM re-força o bloqueio
+      observer = new MutationObserver(() => enforceBlock());
+      observer.observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
+
+      // Interval de segurança: a cada 100ms garante que overlay está no topo
+      enforceInterval = setInterval(enforceBlock, 100);
+
+      console.log('[BLOCK] Overlay NUCLEAR ativado - MutationObserver + interval');
     } else {
-      // Remover overlay quando voltar pra home
+      // Cleanup
       const existing = document.getElementById(OVERLAY_ID);
       if (existing) existing.remove();
-      const existingStyle = document.getElementById(OVERLAY_ID + '_style');
+      const existingStyle = document.getElementById(STYLE_ID);
       if (existingStyle) existingStyle.remove();
     }
 
     return () => {
+      if (observer) observer.disconnect();
+      if (enforceInterval) clearInterval(enforceInterval);
       const existing = document.getElementById(OVERLAY_ID);
       if (existing) existing.remove();
-      const existingStyle = document.getElementById(OVERLAY_ID + '_style');
+      const existingStyle = document.getElementById(STYLE_ID);
       if (existingStyle) existingStyle.remove();
     };
   }, [clicksCompleted, currentScreen, impressionCount, clickCount]);
