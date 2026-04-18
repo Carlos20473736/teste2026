@@ -417,57 +417,84 @@ export default function Home() {
 
   const clicksCompleted = clickCount >= MAX_CLICKS;
 
-  return (
-    <>
-      {/* Overlay de bloqueio — sobrepõe TUDO quando 2 cliques atingidos E está na tela de anúncio */}
-      {clicksCompleted && currentScreen === "ad" && (
-        <div
-          className="fixed inset-0 flex items-center justify-center"
-          style={{
-            zIndex: 2147483647,
-            background: 'rgba(0, 0, 0, 0.92)',
-            backdropFilter: 'blur(12px)',
-          }}
-          onClick={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
-        >
-          <div className="text-center px-8 max-w-[340px]">
-            {/* Ícone de escudo */}
-            <div className="mx-auto w-[72px] h-[72px] rounded-full bg-[#34C759]/15 flex items-center justify-center mb-5">
-              <ShieldCheck className="w-9 h-9 text-[#34C759]" />
+  // Overlay nativo injetado diretamente no body para sobrepor TUDO (iframes, popups, Monetag)
+  useEffect(() => {
+    const OVERLAY_ID = '__click_block_overlay';
+
+    if (clicksCompleted && currentScreen === 'ad') {
+      // Remover overlay anterior se existir
+      const existing = document.getElementById(OVERLAY_ID);
+      if (existing) existing.remove();
+
+      const overlay = document.createElement('div');
+      overlay.id = OVERLAY_ID;
+      overlay.style.cssText = `
+        position: fixed; inset: 0; z-index: 2147483647;
+        background: rgba(0,0,0,0.95); backdrop-filter: blur(16px);
+        display: flex; align-items: center; justify-content: center;
+        font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif;
+      `;
+      // Bloquear todos os eventos
+      const blockEvent = (e: Event) => { e.stopPropagation(); e.preventDefault(); };
+      overlay.addEventListener('click', blockEvent, true);
+      overlay.addEventListener('touchstart', blockEvent, true);
+      overlay.addEventListener('touchend', blockEvent, true);
+      overlay.addEventListener('pointerdown', blockEvent, true);
+      overlay.addEventListener('mousedown', blockEvent, true);
+
+      overlay.innerHTML = `
+        <div style="text-align:center; padding:0 32px; max-width:340px;">
+          <div style="margin:0 auto 20px; width:72px; height:72px; border-radius:50%; background:rgba(52,199,89,0.15); display:flex; align-items:center; justify-content:center;">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#34C759" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <path d="m9 12 2 2 4-4"/>
+            </svg>
+          </div>
+          <h2 style="font-size:22px; font-weight:700; color:#fff; margin-bottom:8px; letter-spacing:-0.02em;">Meta de Cliques Conclu\u00edda</h2>
+          <p style="font-size:15px; color:rgba(255,255,255,0.6); line-height:22px; margin-bottom:24px;">Voc\u00ea atingiu o limite de <span style="color:#34C759; font-weight:600;">${MAX_CLICKS} cliques</span>. A tela foi bloqueada para evitar cliques adicionais.</p>
+          <div style="display:inline-flex; align-items:center; gap:8px; padding:8px 16px; border-radius:999px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.08);">
+            <div style="width:8px; height:8px; border-radius:50%; background:#34C759; animation:pulse-dot 2s infinite;"></div>
+            <span style="font-size:13px; color:rgba(255,255,255,0.7); font-weight:500;">Sess\u00e3o encerrada</span>
+          </div>
+          <div style="margin-top:24px; display:flex; gap:16px; justify-content:center;">
+            <div style="background:rgba(255,255,255,0.06); border-radius:12px; padding:12px 20px; text-align:center;">
+              <p style="font-size:20px; font-weight:700; color:#FF9500; font-variant-numeric:tabular-nums;">${impressionCount}</p>
+              <p style="font-size:11px; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:0.05em; margin-top:2px;">Impress\u00f5es</p>
             </div>
-
-            {/* Título */}
-            <h2 className="text-[22px] font-bold text-white mb-2 tracking-[-0.02em]">
-              Meta de Cliques Concluída
-            </h2>
-
-            {/* Descrição */}
-            <p className="text-[15px] text-white/60 leading-[22px] mb-6">
-              Você atingiu o limite de <span className="text-[#34C759] font-semibold">{MAX_CLICKS} cliques</span>. A tela foi bloqueada para evitar cliques adicionais.
-            </p>
-
-            {/* Badge de status */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.06] border border-white/[0.08]">
-              <div className="w-2 h-2 rounded-full bg-[#34C759] animate-pulse" />
-              <span className="text-[13px] text-white/70 font-medium">Sessão encerrada</span>
-            </div>
-
-            {/* Contadores finais */}
-            <div className="mt-6 flex gap-4 justify-center">
-              <div className="bg-white/[0.06] rounded-xl px-5 py-3 text-center">
-                <p className="text-[20px] font-bold text-[#FF9500] tabular-nums">{impressionCount}</p>
-                <p className="text-[11px] text-white/40 uppercase tracking-wider mt-0.5">Impressões</p>
-              </div>
-              <div className="bg-white/[0.06] rounded-xl px-5 py-3 text-center">
-                <p className="text-[20px] font-bold text-[#34C759] tabular-nums">{clickCount}</p>
-                <p className="text-[11px] text-white/40 uppercase tracking-wider mt-0.5">Cliques</p>
-              </div>
+            <div style="background:rgba(255,255,255,0.06); border-radius:12px; padding:12px 20px; text-align:center;">
+              <p style="font-size:20px; font-weight:700; color:#34C759; font-variant-numeric:tabular-nums;">${clickCount}</p>
+              <p style="font-size:11px; color:rgba(255,255,255,0.4); text-transform:uppercase; letter-spacing:0.05em; margin-top:2px;">Cliques</p>
             </div>
           </div>
         </div>
-      )}
+      `;
 
+      // Adicionar animação CSS
+      const style = document.createElement('style');
+      style.id = OVERLAY_ID + '_style';
+      style.textContent = `@keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }`;
+      document.head.appendChild(style);
+      document.body.appendChild(overlay);
+
+      console.log('[BLOCK] Overlay de bloqueio ativado - sobrepondo tudo');
+    } else {
+      // Remover overlay quando voltar pra home
+      const existing = document.getElementById(OVERLAY_ID);
+      if (existing) existing.remove();
+      const existingStyle = document.getElementById(OVERLAY_ID + '_style');
+      if (existingStyle) existingStyle.remove();
+    }
+
+    return () => {
+      const existing = document.getElementById(OVERLAY_ID);
+      if (existing) existing.remove();
+      const existingStyle = document.getElementById(OVERLAY_ID + '_style');
+      if (existingStyle) existingStyle.remove();
+    };
+  }, [clicksCompleted, currentScreen, impressionCount, clickCount]);
+
+  return (
+    <>
       {/* Diálogo YMID — estilo iOS Alert */}
       <Dialog open={showYmidDialog} onOpenChange={(open) => { if (!open && ymidConfirmed) setShowYmidDialog(false); }}>
         <DialogContent
