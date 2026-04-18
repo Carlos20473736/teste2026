@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
-import { ChevronRight, Loader2 } from "lucide-react";
+import { ChevronRight, Loader2, ShieldCheck } from "lucide-react";
 
 // ===== CONFIGURAÇÃO =====
 const MONETAG_ZONE_ID = "10670317";
@@ -415,8 +415,59 @@ export default function Home() {
   const impressionPercent = Math.min((impressionCount / MAX_IMPRESSIONS) * 100, 100);
   const clickPercent = Math.min((clickCount / MAX_CLICKS) * 100, 100);
 
+  const clicksCompleted = clickCount >= MAX_CLICKS;
+
   return (
     <>
+      {/* Overlay de bloqueio — sobrepõe TUDO quando 2 cliques atingidos */}
+      {clicksCompleted && (
+        <div
+          className="fixed inset-0 flex items-center justify-center"
+          style={{
+            zIndex: 2147483647,
+            background: 'rgba(0, 0, 0, 0.92)',
+            backdropFilter: 'blur(12px)',
+          }}
+          onClick={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+        >
+          <div className="text-center px-8 max-w-[340px]">
+            {/* Ícone de escudo */}
+            <div className="mx-auto w-[72px] h-[72px] rounded-full bg-[#34C759]/15 flex items-center justify-center mb-5">
+              <ShieldCheck className="w-9 h-9 text-[#34C759]" />
+            </div>
+
+            {/* Título */}
+            <h2 className="text-[22px] font-bold text-white mb-2 tracking-[-0.02em]">
+              Meta de Cliques Concluída
+            </h2>
+
+            {/* Descrição */}
+            <p className="text-[15px] text-white/60 leading-[22px] mb-6">
+              Você atingiu o limite de <span className="text-[#34C759] font-semibold">{MAX_CLICKS} cliques</span>. A tela foi bloqueada para evitar cliques adicionais.
+            </p>
+
+            {/* Badge de status */}
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.06] border border-white/[0.08]">
+              <div className="w-2 h-2 rounded-full bg-[#34C759] animate-pulse" />
+              <span className="text-[13px] text-white/70 font-medium">Sessão encerrada</span>
+            </div>
+
+            {/* Contadores finais */}
+            <div className="mt-6 flex gap-4 justify-center">
+              <div className="bg-white/[0.06] rounded-xl px-5 py-3 text-center">
+                <p className="text-[20px] font-bold text-[#FF9500] tabular-nums">{impressionCount}</p>
+                <p className="text-[11px] text-white/40 uppercase tracking-wider mt-0.5">Impressões</p>
+              </div>
+              <div className="bg-white/[0.06] rounded-xl px-5 py-3 text-center">
+                <p className="text-[20px] font-bold text-[#34C759] tabular-nums">{clickCount}</p>
+                <p className="text-[11px] text-white/40 uppercase tracking-wider mt-0.5">Cliques</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Diálogo YMID — estilo iOS Alert */}
       <Dialog open={showYmidDialog} onOpenChange={(open) => { if (!open && ymidConfirmed) setShowYmidDialog(false); }}>
         <DialogContent
