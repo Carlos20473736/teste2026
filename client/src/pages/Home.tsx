@@ -645,12 +645,10 @@ export default function Home() {
             <div className="px-4 pt-4 pb-3.5">
               <div className="flex items-center justify-between mb-2.5">
                 <div className="flex items-center gap-3">
-                  <div className="w-[30px] h-[30px] rounded-[7px] bg-[#FF9500] flex items-center justify-center">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                      <circle cx="12" cy="12" r="3" />
-                    </svg>
-                  </div>
+                  <svg className="flex-shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF9500" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
                   <span className="text-[15px] font-medium text-foreground">Impressões</span>
                 </div>
                 <span className="text-[15px] tabular-nums text-muted-foreground">
@@ -665,17 +663,15 @@ export default function Home() {
             </div>
 
             {/* iOS separator */}
-            <div className="h-px bg-white/[0.08] ml-[58px]" />
+            <div className="h-px bg-white/[0.08]" />
 
             {/* Cliques row */}
             <div className="px-4 pt-3.5 pb-4">
               <div className="flex items-center justify-between mb-2.5">
                 <div className="flex items-center gap-3">
-                  <div className="w-[30px] h-[30px] rounded-[7px] bg-[#34C759] flex items-center justify-center">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5" />
-                    </svg>
-                  </div>
+                  <svg className="flex-shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#34C759" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5" />
+                  </svg>
                   <span className="text-[15px] font-medium text-foreground">Cliques</span>
                 </div>
                 <span className="text-[15px] tabular-nums text-muted-foreground">
