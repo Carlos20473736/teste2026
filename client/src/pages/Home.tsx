@@ -366,7 +366,7 @@ export default function Home() {
   };
 
   const handleShowAd = async () => {
-    if (loading || clicksCompleted) return;
+    if (loading) return;
     const showAd = window[MONETAG_SDK_GLOBAL];
     if (typeof showAd !== "function") {
       setStatusMessage("Aguarde...");
@@ -639,13 +639,11 @@ export default function Home() {
           {/* Botão principal — iOS style */}
           <button
             onClick={handleShowAd}
-            disabled={loading || !sdkReady || !ymidConfirmed || clicksCompleted}
+            disabled={loading || !sdkReady || !ymidConfirmed}
             className="w-full h-[50px] rounded-xl text-[17px] font-semibold text-white transition-all duration-150 active:scale-[0.98] active:opacity-90 disabled:opacity-40 disabled:active:scale-100 flex items-center justify-center gap-2"
             style={{ backgroundColor: "#007AFF" }}
           >
-            {clicksCompleted ? (
-              <span>Meta Concluída</span>
-            ) : loading ? (
+            {loading ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin" />
                 <span>Carregando...</span>
