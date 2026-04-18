@@ -419,8 +419,8 @@ export default function Home() {
 
   return (
     <>
-      {/* Overlay de bloqueio — sobrepõe TUDO quando 2 cliques atingidos */}
-      {clicksCompleted && (
+      {/* Overlay de bloqueio — sobrepõe TUDO quando 2 cliques atingidos E está na tela de anúncio */}
+      {clicksCompleted && currentScreen === "ad" && (
         <div
           className="fixed inset-0 flex items-center justify-center"
           style={{
