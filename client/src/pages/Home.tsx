@@ -470,35 +470,20 @@ export default function Home() {
         htmlEl.appendChild(overlay);
       }
 
-      // 2. Forçar estilos inline (caso algo tente sobrescrever)
+      // 2. Forçar estilos inline — fundo TRANSPARENTE para ver o anúncio rodando
       overlay.style.cssText = `
         position: fixed !important; top: 0 !important; left: 0 !important;
         width: 100vw !important; height: 100vh !important; z-index: 2147483647 !important;
-        background: rgba(0,0,0,0.96) !important; backdrop-filter: blur(20px) !important;
+        background: rgba(0,0,0,0.35) !important;
         display: flex !important; align-items: center !important; justify-content: center !important;
         font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif !important;
         pointer-events: all !important;
       `;
 
-      // 3. Esconder/remover TODOS os iframes e divs do Monetag que estão acima
-      const allElements = document.querySelectorAll('iframe, div[id*="monetag"], div[id*="ad"], div[class*="monetag"], div[style*="z-index"]');
-      allElements.forEach((el) => {
-        if (el.id === OVERLAY_ID || overlay.contains(el)) return;
+      // 3. Rebaixar pointer-events dos iframes do Monetag (sem esconder)
+      document.querySelectorAll('iframe').forEach((el) => {
         const htmlElement = el as HTMLElement;
-        const zIndex = parseInt(window.getComputedStyle(htmlElement).zIndex || '0');
-        if (zIndex > 999 || htmlElement.tagName === 'IFRAME') {
-          htmlElement.style.setProperty('display', 'none', 'important');
-          htmlElement.style.setProperty('visibility', 'hidden', 'important');
-          htmlElement.style.setProperty('z-index', '-1', 'important');
-          htmlElement.style.setProperty('pointer-events', 'none', 'important');
-        }
-      });
-
-      // 4. Também pegar iframes soltos no body e html
-      document.querySelectorAll('body > iframe, html > iframe, body > div > iframe').forEach((iframe) => {
-        const iframeEl = iframe as HTMLElement;
-        iframeEl.style.setProperty('display', 'none', 'important');
-        iframeEl.style.setProperty('pointer-events', 'none', 'important');
+        htmlElement.style.setProperty('pointer-events', 'none', 'important');
       });
     };
 
