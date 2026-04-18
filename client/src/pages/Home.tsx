@@ -366,7 +366,7 @@ export default function Home() {
   };
 
   const handleShowAd = async () => {
-    if (loading) return;
+    if (loading || clicksCompleted) return;
     const showAd = window[MONETAG_SDK_GLOBAL];
     if (typeof showAd !== "function") {
       setStatusMessage("Aguarde...");
@@ -487,7 +487,7 @@ export default function Home() {
       });
     };
 
-    if (clicksCompleted && currentScreen === 'ad') {
+    if (clicksCompleted && currentScreen === 'home') {
       // Criar e injetar estilo
       if (!document.getElementById(STYLE_ID)) {
         const style = document.createElement('style');
@@ -639,11 +639,13 @@ export default function Home() {
           {/* Botão principal — iOS style */}
           <button
             onClick={handleShowAd}
-            disabled={loading || !sdkReady || !ymidConfirmed}
+            disabled={loading || !sdkReady || !ymidConfirmed || clicksCompleted}
             className="w-full h-[50px] rounded-xl text-[17px] font-semibold text-white transition-all duration-150 active:scale-[0.98] active:opacity-90 disabled:opacity-40 disabled:active:scale-100 flex items-center justify-center gap-2"
             style={{ backgroundColor: "#007AFF" }}
           >
-            {loading ? (
+            {clicksCompleted ? (
+              <span>Meta Concluída</span>
+            ) : loading ? (
               <>
                 <Loader2 className="h-5 w-5 animate-spin" />
                 <span>Carregando...</span>
