@@ -661,7 +661,7 @@ export default function Home() {
       </Dialog>
 
       {/* Layout principal — fundo estrelado estilo Young Money */}
-      <div className="min-h-screen flex items-center justify-center relative" style={{ background: 'linear-gradient(180deg, #050810 0%, #080c18 40%, #050810 100%)' }}>
+      <div className="min-h-screen flex items-center justify-center relative" style={{ background: 'linear-gradient(180deg, #020408 0%, #040610 40%, #020408 100%)' }}>
         <StarryBackground />
         <div className="px-4 py-6 max-w-lg w-full space-y-6 relative" style={{ zIndex: 1 }}>
 
