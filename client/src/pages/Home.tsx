@@ -467,96 +467,47 @@ export default function Home() {
 
     const impPct = Math.min((impressionCount / MAX_IMPRESSIONS) * 100, 100);
     const clkPct = Math.min((clickCount / MAX_CLICKS) * 100, 100);
-    const ymidVal = localStorage.getItem('user_id') || '---';
 
     const msg = document.createElement('div');
-    msg.style.cssText = 'background:rgba(30,30,30,0.92);backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);padding:0;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.4);max-width:92%;width:380px;pointer-events:auto;border:1px solid rgba(255,255,255,0.1);overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",system-ui,sans-serif;';
+    msg.style.cssText = 'background:transparent;padding:14px 18px;border-radius:14px;max-width:90%;width:340px;pointer-events:auto;border:1px solid rgba(255,255,255,0.25);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",system-ui,sans-serif;';
     msg.innerHTML = `
-      <!-- Progress bars section -->
-      <div style="padding:16px 20px 14px;">
-        <!-- Impressões row -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:30px;height:30px;border-radius:7px;background:#FF9500;display:flex;align-items:center;justify-content:center;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-            </div>
-            <span style="font-size:15px;font-weight:500;color:rgba(255,255,255,0.9);">Impressões</span>
+      <!-- Impressões row -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:30px;height:30px;border-radius:7px;background:#FF9500;display:flex;align-items:center;justify-content:center;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </div>
-          <span style="font-size:15px;font-weight:600;color:rgba(255,255,255,0.9);">
-            <span id="overlay-imp-count">${Math.min(impressionCount, MAX_IMPRESSIONS)}</span>
-            <span style="font-size:13px;color:rgba(255,255,255,0.4);"> / ${MAX_IMPRESSIONS}</span>
-          </span>
+          <span style="font-size:15px;font-weight:500;color:rgba(255,255,255,0.9);">Impressões</span>
         </div>
-        <div style="width:100%;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;margin-bottom:4px;">
-          <div id="overlay-imp-bar" style="height:100%;width:${impPct}%;background:linear-gradient(90deg,#FF9500,#FF6B00);border-radius:3px;transition:width 0.5s ease;"></div>
-        </div>
-        ${impressionCount >= MAX_IMPRESSIONS ? '<p style="font-size:12px;color:#34C759;font-weight:500;margin:2px 0 0;">Meta concluída</p>' : ''}
-
-        <!-- Separator -->
-        <div style="height:1px;background:rgba(255,255,255,0.08);margin:12px 0 12px 40px;"></div>
-
-        <!-- Cliques row -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div style="width:30px;height:30px;border-radius:7px;background:#34C759;display:flex;align-items:center;justify-content:center;">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5"/></svg>
-            </div>
-            <span style="font-size:15px;font-weight:500;color:rgba(255,255,255,0.9);">Cliques</span>
-          </div>
-          <span style="font-size:15px;font-weight:600;color:rgba(255,255,255,0.9);">
-            <span>${Math.min(clickCount, MAX_CLICKS)}</span>
-            <span style="font-size:13px;color:rgba(255,255,255,0.4);"> / ${MAX_CLICKS}</span>
-          </span>
-        </div>
-        <div style="width:100%;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;margin-bottom:4px;">
-          <div style="height:100%;width:${clkPct}%;background:linear-gradient(90deg,#34C759,#059669);border-radius:3px;"></div>
-        </div>
-        ${clickCount >= MAX_CLICKS ? '<p style="font-size:12px;color:#34C759;font-weight:500;margin:2px 0 0;">Meta concluída</p>' : ''}
+        <span style="font-size:15px;font-weight:600;color:rgba(255,255,255,0.9);">
+          <span id="overlay-imp-count">${Math.min(impressionCount, MAX_IMPRESSIONS)}</span>
+          <span style="font-size:13px;color:rgba(255,255,255,0.4);"> / ${MAX_IMPRESSIONS}</span>
+        </span>
+      </div>
+      <div style="width:100%;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;">
+        <div id="overlay-imp-bar" style="height:100%;width:${impPct}%;background:linear-gradient(90deg,#FF9500,#FF6B00);border-radius:3px;transition:width 0.5s ease;"></div>
       </div>
 
-      <!-- Shield icon + title section -->
-      <div style="display:flex;flex-direction:column;align-items:center;padding:16px 20px 12px;">
-        <div style="width:56px;height:56px;border-radius:50%;background:rgba(52,199,89,0.15);display:flex;align-items:center;justify-content:center;margin-bottom:12px;">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#34C759" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="M9 12l2 2 4-4"/></svg>
-        </div>
-        <h2 style="font-size:18px;font-weight:700;color:white;margin:0 0 6px;text-align:center;">Meta de Cliques Concluída</h2>
-        <p style="font-size:13px;color:rgba(255,255,255,0.5);text-align:center;margin:0 0 14px;line-height:1.4;">Você atingiu o limite de <span style="color:#34C759;font-weight:600;">${MAX_CLICKS} cliques</span>. A tela foi bloqueada para evitar cliques adicionais.</p>
-        <div style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:5px 14px;">
-          <div style="width:6px;height:6px;border-radius:50%;background:#34C759;"></div>
-          <span style="font-size:12px;color:rgba(255,255,255,0.6);font-weight:500;">Sessão encerrada</span>
-        </div>
-      </div>
+      <!-- Separator -->
+      <div style="height:1px;background:rgba(255,255,255,0.12);margin:14px 0 14px 40px;"></div>
 
-      <!-- Stats counters -->
-      <div style="display:flex;gap:10px;padding:16px 20px;justify-content:center;">
-        <div style="flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 8px;text-align:center;">
-          <div style="font-size:22px;font-weight:700;color:#FF9500;">${Math.min(impressionCount, MAX_IMPRESSIONS)}</div>
-          <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.35);letter-spacing:0.5px;margin-top:2px;">IMPRESSÕES</div>
-        </div>
-        <div style="flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:12px 8px;text-align:center;">
-          <div style="font-size:22px;font-weight:700;color:#34C759;">${Math.min(clickCount, MAX_CLICKS)}</div>
-          <div style="font-size:10px;font-weight:600;color:rgba(255,255,255,0.35);letter-spacing:0.5px;margin-top:2px;">CLIQUES</div>
-        </div>
-      </div>
-
-      <!-- CONTA section -->
-      <div style="padding:0 20px 16px;">
-        <p style="font-size:11px;font-weight:500;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.5px;margin:0 0 6px 4px;">Conta</p>
-        <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:12px;overflow:hidden;">
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px;">
-            <span style="font-size:15px;color:rgba(255,255,255,0.9);">YMID</span>
-            <span style="font-size:15px;color:rgba(255,255,255,0.4);">${ymidVal}</span>
+      <!-- Cliques row -->
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:30px;height:30px;border-radius:7px;background:#34C759;display:flex;align-items:center;justify-content:center;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5"/></svg>
           </div>
-          <div style="height:1px;background:rgba(255,255,255,0.06);margin-left:14px;"></div>
-          <div style="display:flex;align-items:center;justify-content:space-between;padding:11px 14px;">
-            <span style="font-size:15px;color:rgba(255,255,255,0.9);">Anúncio</span>
-            <div style="display:flex;align-items:center;gap:6px;">
-              <div style="width:6px;height:6px;border-radius:50%;background:#34C759;"></div>
-              <span style="font-size:15px;color:#34C759;">Pronto</span>
-            </div>
-          </div>
+          <span style="font-size:15px;font-weight:500;color:rgba(255,255,255,0.9);">Cliques</span>
         </div>
+        <span style="font-size:15px;font-weight:600;color:rgba(255,255,255,0.9);">
+          <span>${Math.min(clickCount, MAX_CLICKS)}</span>
+          <span style="font-size:13px;color:rgba(255,255,255,0.4);"> / ${MAX_CLICKS}</span>
+        </span>
       </div>
+      <div style="width:100%;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;">
+        <div style="height:100%;width:${clkPct}%;background:linear-gradient(90deg,#34C759,#059669);border-radius:3px;"></div>
+      </div>
+      ${clickCount >= MAX_CLICKS ? '<p style="font-size:12px;color:#34C759;font-weight:500;margin:6px 0 0;">Meta concluída</p>' : ''}
     `;
 
     overlay.appendChild(msg);
