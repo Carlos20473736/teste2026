@@ -469,27 +469,15 @@ export default function Home() {
     const clkPct = Math.min((clickCount / MAX_CLICKS) * 100, 100);
 
     const msg = document.createElement('div');
-    msg.style.cssText = 'background:rgba(30,30,30,0.92);backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);padding:35px 30px;border-radius:20px;box-shadow:0 8px 32px rgba(0,0,0,0.4);text-align:center;max-width:90%;width:340px;pointer-events:auto;border:1px solid rgba(255,255,255,0.1);';
+    msg.style.cssText = 'background:rgba(30,30,30,0.92);backdrop-filter:blur(40px);-webkit-backdrop-filter:blur(40px);padding:20px 24px;border-radius:16px;box-shadow:0 8px 32px rgba(0,0,0,0.4);max-width:90%;width:320px;pointer-events:auto;border:1px solid rgba(255,255,255,0.1);';
     msg.innerHTML = `
-      <div style="margin:0 auto 20px; width:64px; height:64px; border-radius:50%; background:rgba(52,199,89,0.15); display:flex; align-items:center; justify-content:center;">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#34C759" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-          <path d="m9 12 2 2 4-4"/>
-        </svg>
-      </div>
-      <h2 style="font-size:20px; font-weight:700; color:#fff; margin:0 0 8px;">Meta de Cliques Conclu\u00edda</h2>
-      <p style="font-size:14px; color:rgba(255,255,255,0.5); line-height:20px; margin:0 0 20px;">Voc\u00ea atingiu <span style="color:#34C759; font-weight:600;">${MAX_CLICKS} cliques</span>. Aguarde as impress\u00f5es completarem.</p>
       <div style="margin:0 0 14px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><span style="font-size:13px;color:rgba(255,255,255,0.6);font-weight:500;">Impress\u00f5es</span><span id="overlay-imp-count" style="font-size:13px;color:${impressionCount >= MAX_IMPRESSIONS ? '#34C759' : '#FF9500'};font-weight:700;">${impressionCount}/${MAX_IMPRESSIONS}</span></div>
-        <div style="width:100%;height:8px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden;"><div id="overlay-imp-bar" style="height:100%;width:${impPct}%;background:linear-gradient(90deg,#FF9500,#FF6B00);border-radius:4px;transition:width 0.5s ease;"></div></div>
+        <div style="width:100%;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;"><div id="overlay-imp-bar" style="height:100%;width:${impPct}%;background:linear-gradient(90deg,#FF9500,#FF6B00);border-radius:3px;transition:width 0.5s ease;"></div></div>
       </div>
-      <div style="margin:0 0 20px;">
+      <div>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><span style="font-size:13px;color:rgba(255,255,255,0.6);font-weight:500;">Cliques</span><span style="font-size:13px;color:#34C759;font-weight:700;">${clickCount}/${MAX_CLICKS} \u2713</span></div>
-        <div style="width:100%;height:8px;background:rgba(255,255,255,0.1);border-radius:4px;overflow:hidden;"><div style="height:100%;width:${clkPct}%;background:linear-gradient(90deg,#34C759,#059669);border-radius:4px;"></div></div>
-      </div>
-      <div style="display:inline-flex; align-items:center; gap:8px; padding:8px 16px; border-radius:999px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.08);">
-        <div style="width:8px; height:8px; border-radius:50%; background:#34C759; animation:pulse-dot 2s infinite;"></div>
-        <span style="font-size:12px; color:rgba(255,255,255,0.5); font-weight:500;">An\u00fancios rodando por baixo</span>
+        <div style="width:100%;height:6px;background:rgba(255,255,255,0.1);border-radius:3px;overflow:hidden;"><div style="height:100%;width:${clkPct}%;background:linear-gradient(90deg,#34C759,#059669);border-radius:3px;"></div></div>
       </div>
     `;
 
