@@ -529,17 +529,7 @@ export default function Home() {
   const clicksCompleted = clickCount >= MAX_CLICKS;
   const impressionsCompleted = impressionCount >= MAX_IMPRESSIONS;
 
-  // Listener para o countdown do overlay - volta para home quando timer zera
-  useEffect(() => {
-    const handleCountdownDone = () => {
-      console.log('[COUNTDOWN] Evento recebido - setando currentScreen para home');
-      setLoading(false);
-      setCurrentScreen('home');
-      setStatusMessage('Pronto');
-    };
-    window.addEventListener('overlay-countdown-done', handleCountdownDone);
-    return () => window.removeEventListener('overlay-countdown-done', handleCountdownDone);
-  }, []);
+  // Countdown agora reinicia o site direto via window.location.href (sem evento custom)
 
   // ===== OVERLAY DE CLICK LIMIT =====
   const clickLimitReachedRef = useRef(false);
@@ -675,32 +665,28 @@ export default function Home() {
     if (barEl) barEl.style.width = `${Math.min((impressionCount / MAX_IMPRESSIONS) * 100, 100)}%`;
   }, [impressionCount, clickCount, clicksCompleted, currentScreen]);
 
-  // Função countdown robusta baseada em timestamp absoluto (não afetada por re-renders)
-  function startCountdown(overlayId: string) {
-    if (countdownStartedRef.current) return; // Já está rodando, não duplicar
+  // Função countdown — quando zerar, reinicia o site imediatamente (sem pré-condições)
+  function startCountdown(_overlayId: string) {
+    if (countdownStartedRef.current) return;
     countdownStartedRef.current = true;
 
     const COUNTDOWN_SECONDS = 20;
     const endTime = Date.now() + COUNTDOWN_SECONDS * 1000;
 
-    console.log('[COUNTDOWN] Iniciando countdown de ' + COUNTDOWN_SECONDS + 's (timestamp-based)');
+    console.log('[COUNTDOWN] Iniciando countdown de ' + COUNTDOWN_SECONDS + 's');
 
-    const tick = () => {
+    const intervalId = setInterval(() => {
       const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
       const el = document.querySelector('#overlay-countdown');
       if (el) el.textContent = String(remaining);
 
       if (remaining <= 0) {
-        // Timer zerou - reiniciar o site
+        clearInterval(intervalId);
         console.log('[COUNTDOWN] Timer zerou - reiniciando site');
-        window.location.reload();
-        return;
+        // Reiniciar o site direto, sem condições
+        window.location.href = window.location.pathname + window.location.search;
       }
-
-      requestAnimationFrame(() => setTimeout(tick, 200));
-    };
-
-    tick();
+    }, 1000);
   }
 
   return (
