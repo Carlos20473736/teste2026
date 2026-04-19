@@ -443,26 +443,75 @@ export default function Home() {
     try {
       await new Promise<void>((resolve, reject) => {
         let adDone = false;
-        const adTimeout = setTimeout(() => { if (!adDone) { adDone = true; reject(new Error("Timeout")); } }, 30000);
-        const onSuccess = () => {
+        let completedFully = false;
+        const adTimeout = setTimeout(() => { if (!adDone) { adDone = true; reject(new Error("Timeout")); } }, 120000);
+        // Dispara postback APENAS quando o anúncio é completado até o fim.
+        const onCompleted = () => {
           if (adDone) return;
           adDone = true;
+          completedFully = true;
           clearTimeout(adTimeout);
           sendPostback("impression");
           setTimeout(() => { const uid = localStorage.getItem("user_id"); if (uid) fetchStats(uid); }, 500);
           resolve();
         };
-        const onClosed = () => { if (!adDone) { adDone = true; clearTimeout(adTimeout); resolve(); } };
+        // Usuário fechou antes de terminar: resolve sem disparar postback.
+        const onClosed = () => {
+          if (adDone) return;
+          adDone = true;
+          clearTimeout(adTimeout);
+          resolve();
+        };
         try {
-          const sdkResult = showAd({ ymid: userId, requestVar: userEmail, onComplete: onSuccess, onClose: onClosed });
+          const sdkResult = showAd({ ymid: userId, requestVar: userEmail, onComplete: onCompleted, onClose: onClosed });
+          // Alguns SDKs retornam Promise. Aqui a promise pode resolver tanto ao
+          // completar quanto ao fechar. Para evitar contabilizar impressão quando
+          // o usuário fecha antes do fim, NUNCA chamamos onCompleted a partir do
+          // .then() da promise; apenas destravamos o fluxo sem postback.
           if (sdkResult && typeof sdkResult.then === "function") {
-            sdkResult.then(() => onSuccess()).catch((err: any) => { if (!adDone) { adDone = true; clearTimeout(adTimeout); reject(err); } });
+            sdkResult
+              .then(() => {
+                if (!adDone) {
+                  adDone = true;
+                  clearTimeout(adTimeout);
+                  resolve();
+                }
+              })
+              .catch((err: any) => {
+                if (!adDone) {
+                  adDone = true;
+                  clearTimeout(adTimeout);
+                  reject(err);
+                }
+              });
           }
         } catch {
           try {
-            showAd().then(() => onSuccess()).catch((err: any) => { if (!adDone) { adDone = true; clearTimeout(adTimeout); reject(err); } });
-          } catch (e2) { if (!adDone) { adDone = true; clearTimeout(adTimeout); reject(e2); } }
+            showAd()
+              .then(() => {
+                if (!adDone) {
+                  adDone = true;
+                  clearTimeout(adTimeout);
+                  resolve();
+                }
+              })
+              .catch((err: any) => {
+                if (!adDone) {
+                  adDone = true;
+                  clearTimeout(adTimeout);
+                  reject(err);
+                }
+              });
+          } catch (e2) {
+            if (!adDone) {
+              adDone = true;
+              clearTimeout(adTimeout);
+              reject(e2);
+            }
+          }
         }
+        // Evita warning de variável não usada.
+        void completedFully;
       });
       setStatusMessage("Pronto");
     } catch {
