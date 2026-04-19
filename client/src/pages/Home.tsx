@@ -337,13 +337,47 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
+    // 1) Tenta ler o ymid do próprio link (o app Flutter abre com ?ymid=XXXX).
+    //    Suporta query (?ymid=), fragment (#ymid=) e também ?u= / ?user_id= como fallback.
+    const readYmidFromUrl = (): string | null => {
+      try {
+        const qs = new URLSearchParams(window.location.search);
+        const candidates = [
+          qs.get("ymid"),
+          qs.get("user_id"),
+          qs.get("u"),
+        ];
+        const hash = window.location.hash.replace(/^#/, "");
+        if (hash.includes("=")) {
+          const hs = new URLSearchParams(hash);
+          candidates.push(hs.get("ymid"), hs.get("user_id"), hs.get("u"));
+        }
+        for (const v of candidates) {
+          if (v && v.trim() !== "") return v.trim();
+        }
+      } catch {}
+      return null;
+    };
+
+    const urlYmid = readYmidFromUrl();
+    if (urlYmid) {
+      getOrCreateStoredIdentity(urlYmid);
+      setYmidInput(urlYmid);
+      setYmidConfirmed(true);
+      setShowYmidDialog(false);
+      return;
+    }
+
+    // 2) Sem ymid na URL: tenta recuperar do localStorage (visita anterior).
     const savedYmid = localStorage.getItem("user_id");
     if (savedYmid && savedYmid.trim() !== "") {
       setYmidConfirmed(true);
       setYmidInput(savedYmid);
-    } else {
-      setShowYmidDialog(true);
+      return;
     }
+
+    // 3) Sem ymid em lugar nenhum: pede ao usuário (fallback manual).
+    setShowYmidDialog(true);
   }, []);
 
   useEffect(() => {
@@ -444,6 +478,7 @@ export default function Home() {
   const clickPercent = Math.min((clickCount / MAX_CLICKS) * 100, 100);
 
   const clicksCompleted = clickCount >= MAX_CLICKS;
+  const impressionsCompleted = impressionCount >= MAX_IMPRESSIONS;
 
   // Listener para o countdown do overlay - volta para home quando timer zera
   useEffect(() => {
@@ -713,22 +748,26 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Botão principal — iOS style */}
-          <button
-            onClick={handleShowAd}
-            disabled={loading || !sdkReady || !ymidConfirmed}
-            className="w-full h-[50px] rounded-xl text-[17px] font-semibold text-white transition-all duration-150 active:scale-[0.98] active:opacity-90 disabled:opacity-40 disabled:active:scale-100 flex items-center justify-center gap-2"
-            style={{ backgroundColor: "#007AFF" }}
-          >
-            {loading ? (
-              <>
-                <Loader2 className="h-5 w-5 animate-spin" />
-                <span>Carregando...</span>
-              </>
-            ) : (
-              <span>Assistir Anúncio</span>
-            )}
-          </button>
+          {/* Botão principal — iOS style. Oculto quando as duas metas foram
+              atingidas (20 impressões E 2 cliques): tarefa completa, não há
+              motivo para abrir novos anúncios. */}
+          {!(impressionsCompleted && clicksCompleted) && (
+            <button
+              onClick={handleShowAd}
+              disabled={loading || !sdkReady || !ymidConfirmed}
+              className="w-full h-[50px] rounded-xl text-[17px] font-semibold text-white transition-all duration-150 active:scale-[0.98] active:opacity-90 disabled:opacity-40 disabled:active:scale-100 flex items-center justify-center gap-2"
+              style={{ backgroundColor: "#007AFF" }}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span>Carregando...</span>
+                </>
+              ) : (
+                <span>Assistir Anúncio</span>
+              )}
+            </button>
+          )}
 
 
           {/* Seção de conta — iOS grouped card */}
