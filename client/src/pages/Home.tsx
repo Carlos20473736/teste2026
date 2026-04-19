@@ -660,9 +660,8 @@ export default function Home() {
         </DialogContent>
       </Dialog>
 
-      {/* Layout principal — fundo estrelado estilo Young Money */}
-      <div className="min-h-screen flex items-center justify-center relative" style={{ background: 'linear-gradient(180deg, #020408 0%, #040610 40%, #020408 100%)' }}>
-        <StarryBackground />
+      {/* Layout principal — fundo transparente (o fundo visível vem da WebView/app). */}
+      <div className="min-h-screen flex items-center justify-center relative" style={{ background: 'transparent' }}>
         <div className="px-4 py-6 max-w-lg w-full space-y-6 relative" style={{ zIndex: 1 }}>
 
 

@@ -122,15 +122,13 @@
 }
 
 /*
- * Fundo escuro aplicado imediatamente em html/body, antes do React montar
- * e antes do ThemeProvider adicionar a classe .dark no <html>.
- * Isso evita o flash branco quando o app/WebView abre o site.
- * A cor bate com o gradiente inicial do StarryBackground no Home.tsx
- * (linear-gradient de #020408 -> #040610) para transição invisível.
+ * Fundo totalmente transparente em html/body.
+ * O fundo visível é fornecido pela WebView do app (StarBackground do Flutter).
+ * Não pintamos absolutamente nada aqui — nem claro, nem escuro.
  */
 html,
 body {
-  background-color: #020408 !important;
+  background: transparent !important;
   color-scheme: dark;
 }
 
@@ -140,7 +138,7 @@ body {
   }
   body {
     @apply text-foreground;
-    background-color: #020408;
+    background: transparent;
     font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
