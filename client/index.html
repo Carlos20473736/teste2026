@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="dark" style="background-color:#020408;">
 
   <head>
     <meta charset="UTF-8" />
@@ -7,15 +7,23 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#020408" />
+    <meta name="color-scheme" content="dark" />
     <title>Site de Anúncio - Ganhe Recompensas</title>
+    <style>
+      /* Fundo escuro aplicado antes de qualquer CSS/JS carregar
+         para eliminar o flash branco ao abrir o site na WebView. */
+      html, body { background-color: #020408 !important; margin: 0; }
+      #root { background-color: #020408; min-height: 100vh; }
+    </style>
     <script src="/telegram-env.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
   </head>
 
-  <body>
+  <body style="background-color:#020408;">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script

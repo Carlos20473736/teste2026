@@ -121,12 +121,26 @@
   --sidebar-ring: oklch(0.65 0.22 260);
 }
 
+/*
+ * Fundo escuro aplicado imediatamente em html/body, antes do React montar
+ * e antes do ThemeProvider adicionar a classe .dark no <html>.
+ * Isso evita o flash branco quando o app/WebView abre o site.
+ * A cor bate com o gradiente inicial do StarryBackground no Home.tsx
+ * (linear-gradient de #020408 -> #040610) para transição invisível.
+ */
+html,
+body {
+  background-color: #020408 !important;
+  color-scheme: dark;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply text-foreground;
+    background-color: #020408;
     font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
