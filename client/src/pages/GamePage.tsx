@@ -30,36 +30,58 @@ interface GamePageProps {
 }
 
 // ===== CONFIGURAÇÃO POR JOGO =====
-const GAME_CONFIG: Record<GameType, { label: string; emoji: string; title: string }> = {
+const POSTBACK_SERVER_BASE_URL = "https://monetag-postback-server-production.up.railway.app";
+
+const GAME_CONFIG: Record<
+  GameType,
+  {
+    label: string;
+    emoji: string;
+    title: string;
+    zoneId: string;
+    sdkGlobal: string;
+    postbackUrl: string;
+    statsUserUrl: string;
+    source: "roulette" | "candy" | "scratch";
+  }
+> = {
   spin: {
     label: "Roleta",
     emoji: "\u{1F3B0}",
     title: "Roleta - Ganhe Recompensas",
+    zoneId: "10670317",
+    sdkGlobal: "show_10670317",
+    postbackUrl: `${POSTBACK_SERVER_BASE_URL}/api/postback/spin`,
+    statsUserUrl: `${POSTBACK_SERVER_BASE_URL}/api/stats/spin/user/`,
+    source: "roulette",
   },
   candy: {
     label: "Candy",
     emoji: "\u{1F36C}",
     title: "Candy - Ganhe Recompensas",
+    zoneId: "10670317",
+    sdkGlobal: "show_10670317",
+    postbackUrl: `${POSTBACK_SERVER_BASE_URL}/api/postback/candy`,
+    statsUserUrl: `${POSTBACK_SERVER_BASE_URL}/api/stats/candy/user/`,
+    source: "candy",
   },
   scratch: {
     label: "Raspadinha",
     emoji: "\u{1F3AB}",
     title: "Raspadinha - Ganhe Recompensas",
+    zoneId: "10670317",
+    sdkGlobal: "show_10670317",
+    postbackUrl: `${POSTBACK_SERVER_BASE_URL}/api/postback/scratch`,
+    statsUserUrl: `${POSTBACK_SERVER_BASE_URL}/api/stats/scratch/user/`,
+    source: "scratch",
   },
 };
-
-// ===== CONFIGURAÇÃO MONETAG =====
-const MONETAG_ZONE_ID = "10670317";
-const MONETAG_SDK_GLOBAL = `show_${MONETAG_ZONE_ID}`;
-
-const API_BASE_URL = "https://monetag-postback-server-production.up.railway.app/api/stats/user/";
-const POSTBACK_URL = "https://monetag-postback-server-production.up.railway.app/api/postback";
 
 const MAX_IMPRESSIONS = 20;
 const MAX_CLICKS = 2;
 
 let __lastPostbackTime = 0;
-let __lastPostbackType = "";
+let __lastPostbackKey = "";
 
 declare global {
   interface Window {
@@ -98,29 +120,34 @@ const getOrCreateStoredIdentity = (customYmid?: string) => {
   return { userId: generatedUserId, userEmail: generatedUserEmail };
 };
 
-function sendPostback(eventType: "impression" | "click") {
+function sendPostback(
+  gameConfig: (typeof GAME_CONFIG)[GameType],
+  eventType: "impression" | "click"
+) {
   const now = Date.now();
-  if (now - __lastPostbackTime < 25000 && __lastPostbackType === eventType) {
-    console.log(`[POSTBACK] Ignorando ${eventType} - duplicado`);
+  const dedupeKey = `${gameConfig.source}:${eventType}`;
+  if (now - __lastPostbackTime < 25000 && __lastPostbackKey === dedupeKey) {
+    console.log(`[POSTBACK][${gameConfig.source}] Ignorando ${eventType} - duplicado`);
     return;
   }
   __lastPostbackTime = now;
-  __lastPostbackType = eventType;
+  __lastPostbackKey = dedupeKey;
   const userId = localStorage.getItem("user_id") || "";
   const userEmail = localStorage.getItem("user_email") || "";
   const price = eventType === "click" ? "0.0045" : "0.0023";
   const params = new URLSearchParams({
     event_type: eventType,
-    zone_id: MONETAG_ZONE_ID,
+    zone_id: gameConfig.zoneId,
     ymid: userId,
     user_email: userEmail,
     estimated_price: price,
+    source: gameConfig.source,
   });
-  console.log(`[POSTBACK] Enviando ${eventType}...`);
-  fetch(`${POSTBACK_URL}?${params.toString()}`, { method: "GET", mode: "cors" })
+  console.log(`[POSTBACK][${gameConfig.source}] Enviando ${eventType}...`);
+  fetch(`${gameConfig.postbackUrl}?${params.toString()}`, { method: "GET", mode: "cors" })
     .then((res) => res.json())
-    .then((data) => console.log(`[POSTBACK] ${eventType} enviado:`, data))
-    .catch((err) => console.error(`[POSTBACK] Erro:`, err));
+    .then((data) => console.log(`[POSTBACK][${gameConfig.source}] ${eventType} enviado:`, data))
+    .catch((err) => console.error(`[POSTBACK][${gameConfig.source}] Erro:`, err));
 }
 
 // iOS-style progress bar component
@@ -161,7 +188,7 @@ export default function GamePage({ gameType }: GamePageProps) {
   }, [config.title]);
 
   const fetchStats = useCallback((userId: string) => {
-    fetch(API_BASE_URL + userId)
+    fetch(config.statsUserUrl + userId)
       .then((r) => r.json())
       .then((data) => {
         if (data.success) {
@@ -169,8 +196,8 @@ export default function GamePage({ gameType }: GamePageProps) {
           setClickCount(data.total_clicks || 0);
         }
       })
-      .catch((err) => console.error("[STATS] Erro:", err));
-  }, []);
+      .catch((err) => console.error(`[STATS][${config.source}] Erro:`, err));
+  }, [config.source, config.statsUserUrl]);
 
   useEffect(() => {
     // 1) Tenta ler o ymid do próprio link (o app Flutter abre com ?ymid=XXXX).
@@ -225,21 +252,21 @@ export default function GamePage({ gameType }: GamePageProps) {
     if (statsIntervalRef.current) clearInterval(statsIntervalRef.current);
     statsIntervalRef.current = setInterval(() => fetchStats(storedIdentity.userId), 5000);
 
-    if (typeof window[MONETAG_SDK_GLOBAL] === "function") {
+    if (typeof window[config.sdkGlobal] === "function") {
       setSdkReady(true);
       setStatusMessage("Pronto");
       return;
     }
     const script = document.createElement("script");
     script.src = "//libtl.com/sdk.js";
-    script.setAttribute("data-zone", MONETAG_ZONE_ID);
-    script.setAttribute("data-sdk", MONETAG_SDK_GLOBAL);
+    script.setAttribute("data-zone", config.zoneId);
+    script.setAttribute("data-sdk", config.sdkGlobal);
     script.async = true;
     script.onload = () => {
       let checks = 0;
       const iv = setInterval(() => {
         checks++;
-        if (window[MONETAG_SDK_GLOBAL]) {
+        if (window[config.sdkGlobal]) {
           clearInterval(iv);
           setSdkReady(true);
           setStatusMessage("Pronto");
@@ -252,7 +279,7 @@ export default function GamePage({ gameType }: GamePageProps) {
     script.onerror = () => setStatusMessage("Erro de conexão");
     document.head.appendChild(script);
     return () => { if (statsIntervalRef.current) clearInterval(statsIntervalRef.current); };
-  }, [ymidConfirmed, fetchStats]);
+  }, [ymidConfirmed, fetchStats, config.sdkGlobal, config.zoneId]);
 
   const handleYmidConfirm = () => {
     const trimmed = ymidInput.trim();
@@ -265,7 +292,7 @@ export default function GamePage({ gameType }: GamePageProps) {
 
   const handleShowAd = async () => {
     if (loading) return;
-    const showAd = window[MONETAG_SDK_GLOBAL];
+    const showAd = window[config.sdkGlobal];
     if (typeof showAd !== "function") {
       setStatusMessage("Aguarde...");
       return;
@@ -287,7 +314,7 @@ export default function GamePage({ gameType }: GamePageProps) {
           adDone = true;
           completedFully = true;
           clearTimeout(adTimeout);
-          sendPostback("impression");
+          sendPostback(config, "impression");
           setTimeout(() => { const uid = localStorage.getItem("user_id"); if (uid) fetchStats(uid); }, 500);
           resolve();
         };
