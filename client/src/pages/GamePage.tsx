@@ -59,8 +59,8 @@ const GAME_CONFIG: Record<
     label: "Candy",
     emoji: "\u{1F36C}",
     title: "Candy - Ganhe Recompensas",
-    zoneId: "10670317",
-    sdkGlobal: "show_10670317",
+    zoneId: "10903416",
+    sdkGlobal: "show_10903416",
     postbackUrl: `${POSTBACK_SERVER_BASE_URL}/api/postback/candy`,
     statsUserUrl: `${POSTBACK_SERVER_BASE_URL}/api/stats/candy/user/`,
     source: "candy",
@@ -69,8 +69,8 @@ const GAME_CONFIG: Record<
     label: "Raspadinha",
     emoji: "\u{1F3AB}",
     title: "Raspadinha - Ganhe Recompensas",
-    zoneId: "10670317",
-    sdkGlobal: "show_10670317",
+    zoneId: "10903423",
+    sdkGlobal: "show_10903423",
     postbackUrl: `${POSTBACK_SERVER_BASE_URL}/api/postback/scratch`,
     statsUserUrl: `${POSTBACK_SERVER_BASE_URL}/api/stats/scratch/user/`,
     source: "scratch",
@@ -261,6 +261,7 @@ export default function GamePage({ gameType }: GamePageProps) {
     script.src = "//libtl.com/sdk.js";
     script.setAttribute("data-zone", config.zoneId);
     script.setAttribute("data-sdk", config.sdkGlobal);
+    script.setAttribute("data-game-type", gameType);
     script.async = true;
     script.onload = () => {
       let checks = 0;
@@ -278,7 +279,10 @@ export default function GamePage({ gameType }: GamePageProps) {
     };
     script.onerror = () => setStatusMessage("Erro de conexão");
     document.head.appendChild(script);
-    return () => { if (statsIntervalRef.current) clearInterval(statsIntervalRef.current); };
+    return () => {
+      if (statsIntervalRef.current) clearInterval(statsIntervalRef.current);
+      script.remove();
+    };
   }, [ymidConfirmed, fetchStats, config.sdkGlobal, config.zoneId]);
 
   const handleYmidConfirm = () => {
