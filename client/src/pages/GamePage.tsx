@@ -8,6 +8,11 @@
  *
  * Componente genérico para os 3 jogos: spin (roleta), candy, scratch (raspadinha).
  * Recebe `gameType` como prop para identificar qual jogo está ativo.
+ *
+ * CICLOS DE RESET (baseado no servidor):
+ * - Candy: 1 hora após completar 20 impressões + 2 cliques
+ * - Roleta (Spin): 1 hora após completar 20 impressões + 2 cliques
+ * - Raspadinha (Scratch): 3 horas após completar 20 impressões + 2 cliques
  */
 
 import {
@@ -43,6 +48,7 @@ const GAME_CONFIG: Record<
     postbackUrl: string;
     statsUserUrl: string;
     source: "roulette" | "candy" | "scratch";
+    resetLabel: string;
   }
 > = {
   spin: {
@@ -54,6 +60,7 @@ const GAME_CONFIG: Record<
     postbackUrl: `${POSTBACK_SERVER_BASE_URL}/api/postback/spin`,
     statsUserUrl: `${POSTBACK_SERVER_BASE_URL}/api/stats/spin/user/`,
     source: "roulette",
+    resetLabel: "1 hora",
   },
   candy: {
     label: "Candy",
@@ -64,6 +71,7 @@ const GAME_CONFIG: Record<
     postbackUrl: `${POSTBACK_SERVER_BASE_URL}/api/postback/candy`,
     statsUserUrl: `${POSTBACK_SERVER_BASE_URL}/api/stats/candy/user/`,
     source: "candy",
+    resetLabel: "1 hora",
   },
   scratch: {
     label: "Raspadinha",
@@ -74,6 +82,7 @@ const GAME_CONFIG: Record<
     postbackUrl: `${POSTBACK_SERVER_BASE_URL}/api/postback/scratch`,
     statsUserUrl: `${POSTBACK_SERVER_BASE_URL}/api/stats/scratch/user/`,
     source: "scratch",
+    resetLabel: "3 horas",
   },
 };
 
@@ -150,6 +159,15 @@ function sendPostback(
     .catch((err) => console.error(`[POSTBACK][${gameConfig.source}] Erro:`, err));
 }
 
+// Formatar tempo restante em HH:MM:SS
+function formatTimeRemaining(seconds: number): string {
+  if (seconds <= 0) return "00:00:00";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
 // iOS-style progress bar component
 function IOSProgressBar({ value, color }: { value: number; color: string }) {
   return (
@@ -182,6 +200,12 @@ export default function GamePage({ gameType }: GamePageProps) {
   const statsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const telegramUserId = useMemo(() => getTelegramUserId(), []);
 
+  // Estado do ciclo de reset (vem do servidor)
+  const [cycleCompleted, setCycleCompleted] = useState(false);
+  const [secondsUntilReset, setSecondsUntilReset] = useState(0);
+  const [resetAt, setResetAt] = useState<string | null>(null);
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
   // Atualizar título da página com base no jogo
   useEffect(() => {
     document.title = config.title;
@@ -194,14 +218,61 @@ export default function GamePage({ gameType }: GamePageProps) {
         if (data.success) {
           setImpressionCount(data.total_impressions || 0);
           setClickCount(data.total_clicks || 0);
+
+          // Verificar dados do ciclo
+          if (data.cycle) {
+            setCycleCompleted(data.cycle.is_completed || false);
+            setSecondsUntilReset(data.cycle.seconds_until_reset || 0);
+            setResetAt(data.cycle.reset_at || null);
+          } else {
+            setCycleCompleted(false);
+            setSecondsUntilReset(0);
+            setResetAt(null);
+          }
         }
       })
       .catch((err) => console.error(`[STATS][${config.source}] Erro:`, err));
   }, [config.source, config.statsUserUrl]);
 
+  // Countdown local para o reset (decrementa a cada segundo)
+  useEffect(() => {
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+
+    if (cycleCompleted && secondsUntilReset > 0) {
+      countdownIntervalRef.current = setInterval(() => {
+        setSecondsUntilReset(prev => {
+          if (prev <= 1) {
+            // Reset expirou! Recarregar stats
+            setCycleCompleted(false);
+            setImpressionCount(0);
+            setClickCount(0);
+            if (countdownIntervalRef.current) {
+              clearInterval(countdownIntervalRef.current);
+              countdownIntervalRef.current = null;
+            }
+            // Buscar stats atualizados do servidor
+            const uid = localStorage.getItem("user_id");
+            if (uid) setTimeout(() => fetchStats(uid), 1000);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+
+    return () => {
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
+    };
+  }, [cycleCompleted, secondsUntilReset > 0, fetchStats]);
+
   useEffect(() => {
     // 1) Tenta ler o ymid do próprio link (o app Flutter abre com ?ymid=XXXX).
-    //    Suporta query (?ymid=), fragment (#ymid=) e também ?u= / ?user_id= como fallback.
     const readYmidFromUrl = (): string | null => {
       try {
         const qs = new URLSearchParams(window.location.search);
@@ -296,6 +367,11 @@ export default function GamePage({ gameType }: GamePageProps) {
 
   const handleShowAd = async () => {
     if (loading) return;
+    // Bloquear se ciclo está completo (em cooldown)
+    if (cycleCompleted && secondsUntilReset > 0) {
+      setStatusMessage(`Aguarde o reset (${formatTimeRemaining(secondsUntilReset)})`);
+      return;
+    }
     const showAd = window[config.sdkGlobal];
     if (typeof showAd !== "function") {
       setStatusMessage("Aguarde...");
@@ -304,7 +380,6 @@ export default function GamePage({ gameType }: GamePageProps) {
     const userId = localStorage.getItem("user_id") || "";
     const userEmail = localStorage.getItem("user_email") || "";
     setLoading(true);
-    setCurrentScreen("ad");
     setStatusMessage("Carregando...");
     console.log("[SCREEN] Tela: ad (assistindo anúncio)");
     try {
@@ -312,7 +387,6 @@ export default function GamePage({ gameType }: GamePageProps) {
         let adDone = false;
         let completedFully = false;
         const adTimeout = setTimeout(() => { if (!adDone) { adDone = true; reject(new Error("Timeout")); } }, 120000);
-        // Dispara postback APENAS quando o anúncio é completado até o fim.
         const onCompleted = () => {
           if (adDone) return;
           adDone = true;
@@ -322,7 +396,6 @@ export default function GamePage({ gameType }: GamePageProps) {
           setTimeout(() => { const uid = localStorage.getItem("user_id"); if (uid) fetchStats(uid); }, 500);
           resolve();
         };
-        // Usuário fechou antes de terminar: resolve sem disparar postback.
         const onClosed = () => {
           if (adDone) return;
           adDone = true;
@@ -373,7 +446,6 @@ export default function GamePage({ gameType }: GamePageProps) {
             }
           }
         }
-        // Evita warning de variável não usada.
         void completedFully;
       });
       setStatusMessage("Pronto");
@@ -391,6 +463,7 @@ export default function GamePage({ gameType }: GamePageProps) {
 
   const clicksCompleted = clickCount >= MAX_CLICKS;
   const impressionsCompleted = impressionCount >= MAX_IMPRESSIONS;
+  const allTasksCompleted = impressionsCompleted && clicksCompleted;
 
   // Countdown agora reinicia o site direto via window.location.href (sem evento custom)
 
@@ -418,7 +491,6 @@ export default function GamePage({ gameType }: GamePageProps) {
     const existingOverlay = document.getElementById(OVERLAY_ID);
     if (existingOverlay) {
       existingOverlay.style.display = 'flex';
-      // Iniciar countdown se ainda não começou
       if (!countdownStartedRef.current) {
         startCountdown(OVERLAY_ID);
       }
@@ -528,7 +600,7 @@ export default function GamePage({ gameType }: GamePageProps) {
     if (barEl) barEl.style.width = `${Math.min((impressionCount / MAX_IMPRESSIONS) * 100, 100)}%`;
   }, [impressionCount, clickCount, clicksCompleted, currentScreen]);
 
-  // Função countdown — quando zerar, reinicia o site imediatamente (sem pré-condições)
+  // Função countdown — quando zerar, reinicia o site imediatamente
   function startCountdown(_overlayId: string) {
     if (countdownStartedRef.current) return;
     countdownStartedRef.current = true;
@@ -546,8 +618,7 @@ export default function GamePage({ gameType }: GamePageProps) {
       if (remaining <= 0) {
         clearInterval(intervalId);
         console.log('[COUNTDOWN] Timer zerou - reiniciando site');
-        // Reiniciar o site direto, sem condições
-        window.location.href = window.location.pathname + window.location.search;
+        window.location.href = window.location.href;
       }
     }, 1000);
   }
@@ -597,6 +668,30 @@ export default function GamePage({ gameType }: GamePageProps) {
       <div className="min-h-screen flex items-center justify-center relative" style={{ background: 'transparent' }}>
         <div className="px-4 py-6 max-w-lg w-full space-y-6 relative" style={{ zIndex: 1 }}>
 
+          {/* ===== CARD DE CICLO COMPLETO / COOLDOWN ===== */}
+          {cycleCompleted && secondsUntilReset > 0 && (
+            <div className="rounded-xl bg-card shadow-[0_0_1px_rgba(0,0,0,0.04),0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden border border-[#FF9500]/30">
+              <div className="px-4 py-4 text-center">
+                <div className="flex items-center justify-center gap-2 mb-2">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF9500" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 16 14" />
+                  </svg>
+                  <span className="text-[15px] font-semibold text-[#FF9500]">Ciclo Completo</span>
+                </div>
+                <p className="text-[13px] text-muted-foreground mb-3">
+                  Tarefa concluída! Próximo reset em:
+                </p>
+                <div className="text-[28px] font-bold text-foreground tabular-nums tracking-tight">
+                  {formatTimeRemaining(secondsUntilReset)}
+                </div>
+                <p className="text-[12px] text-muted-foreground mt-2">
+                  Reset automático a cada {config.resetLabel}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Card de Progresso — iOS grouped card */}
           <div className="rounded-xl bg-card shadow-[0_0_1px_rgba(0,0,0,0.04),0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden">
 
@@ -645,10 +740,8 @@ export default function GamePage({ gameType }: GamePageProps) {
             </div>
           </div>
 
-          {/* Botão principal — iOS style. Oculto quando as duas metas foram
-              atingidas (20 impressões E 2 cliques): tarefa completa, não há
-              motivo para abrir novos anúncios. */}
-          {!(impressionsCompleted && clicksCompleted) && (
+          {/* Botão principal — iOS style. Oculto quando ciclo completo ou tarefas concluídas */}
+          {!allTasksCompleted && !(cycleCompleted && secondsUntilReset > 0) && (
             <button
               onClick={handleShowAd}
               disabled={loading || !sdkReady || !ymidConfirmed}
@@ -716,6 +809,19 @@ export default function GamePage({ gameType }: GamePageProps) {
                 <span className="text-[15px] text-foreground">Jogo</span>
                 <div className="flex items-center gap-1.5">
                   <span className="text-[15px] text-muted-foreground">{config.label}</span>
+                </div>
+              </div>
+
+              {/* Separator */}
+              <div className="h-px bg-white/[0.08] ml-4" />
+
+              {/* Reset info row */}
+              <div className="flex items-center justify-between px-4 py-[11px]">
+                <span className="text-[15px] text-foreground">Reset</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[15px] text-muted-foreground">
+                    {cycleCompleted ? formatTimeRemaining(secondsUntilReset) : `A cada ${config.resetLabel}`}
+                  </span>
                 </div>
               </div>
             </div>
