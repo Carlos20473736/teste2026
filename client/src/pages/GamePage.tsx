@@ -566,12 +566,6 @@ export default function GamePage({ gameType }: GamePageProps) {
       <div className="min-h-screen flex items-center justify-center relative" style={{ background: 'transparent' }}>
         <div className="px-4 py-6 max-w-lg w-full space-y-6 relative" style={{ zIndex: 1 }}>
 
-          {/* Header do jogo — identificação visual */}
-          <div className="text-center">
-            <span className="text-[32px]">{config.emoji}</span>
-            <h1 className="text-[20px] font-bold text-foreground mt-1">{config.label}</h1>
-          </div>
-
           {/* Card de Progresso — iOS grouped card */}
           <div className="rounded-xl bg-card shadow-[0_0_1px_rgba(0,0,0,0.04),0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden">
 
@@ -690,7 +684,6 @@ export default function GamePage({ gameType }: GamePageProps) {
               <div className="flex items-center justify-between px-4 py-[11px]">
                 <span className="text-[15px] text-foreground">Jogo</span>
                 <div className="flex items-center gap-1.5">
-                  <span className="text-[15px]">{config.emoji}</span>
                   <span className="text-[15px] text-muted-foreground">{config.label}</span>
                 </div>
               </div>
