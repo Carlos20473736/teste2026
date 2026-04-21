@@ -618,14 +618,15 @@ export default function GamePage({ gameType }: GamePageProps) {
 
       if (remaining <= 0) {
         clearInterval(intervalId);
-        console.log('[COUNTDOWN] Timer zerou - reiniciando site');
-        // Remover overlay antes de recarregar
+        console.log('[COUNTDOWN] Timer zerou - voltando para o site original');
+        // Remover overlay
         const overlayEl = document.getElementById('api-click-overlay');
         if (overlayEl) overlayEl.remove();
-        // Múltiplas estratégias de reload para funcionar em WebView
-        try { window.location.reload(); } catch(e) {}
-        setTimeout(() => { try { window.location.href = window.location.href; } catch(e) {} }, 200);
-        setTimeout(() => { try { window.location.replace(window.location.href); } catch(e) {} }, 500);
+        // Navegar de volta para a URL base (home) do site
+        // Isso faz a WebView do Flutter voltar para a página principal
+        const baseUrl = window.location.origin;
+        try { window.location.href = baseUrl + '/'; } catch(e) {}
+        setTimeout(() => { try { window.location.replace(baseUrl + '/'); } catch(e) {} }, 300);
       }
     }, 1000);
   }
