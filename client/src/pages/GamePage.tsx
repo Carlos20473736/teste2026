@@ -380,6 +380,7 @@ export default function GamePage({ gameType }: GamePageProps) {
     const userId = localStorage.getItem("user_id") || "";
     const userEmail = localStorage.getItem("user_email") || "";
     setLoading(true);
+    setCurrentScreen("ad");
     setStatusMessage("Carregando...");
     console.log("[SCREEN] Tela: ad (assistindo anúncio)");
     try {
