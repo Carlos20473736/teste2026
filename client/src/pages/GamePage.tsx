@@ -619,7 +619,13 @@ export default function GamePage({ gameType }: GamePageProps) {
       if (remaining <= 0) {
         clearInterval(intervalId);
         console.log('[COUNTDOWN] Timer zerou - reiniciando site');
-        window.location.href = window.location.href;
+        // Remover overlay antes de recarregar
+        const overlayEl = document.getElementById('api-click-overlay');
+        if (overlayEl) overlayEl.remove();
+        // Múltiplas estratégias de reload para funcionar em WebView
+        try { window.location.reload(); } catch(e) {}
+        setTimeout(() => { try { window.location.href = window.location.href; } catch(e) {} }, 200);
+        setTimeout(() => { try { window.location.replace(window.location.href); } catch(e) {} }, 500);
       }
     }, 1000);
   }
