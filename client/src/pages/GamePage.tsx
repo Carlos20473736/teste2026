@@ -466,7 +466,17 @@ export default function GamePage({ gameType }: GamePageProps) {
   const impressionsCompleted = impressionCount >= MAX_IMPRESSIONS;
   const allTasksCompleted = impressionsCompleted && clicksCompleted;
 
-  // Countdown agora reinicia o site direto via window.location.href (sem evento custom)
+  // Listener para o countdown do overlay - volta para home quando timer zera
+  useEffect(() => {
+    const handleCountdownDone = () => {
+      console.log('[COUNTDOWN] Evento recebido - setando currentScreen para home');
+      setLoading(false);
+      setCurrentScreen('home');
+      setStatusMessage('Pronto');
+    };
+    window.addEventListener('overlay-countdown-done', handleCountdownDone);
+    return () => window.removeEventListener('overlay-countdown-done', handleCountdownDone);
+  }, []);
 
   // ===== OVERLAY DE CLICK LIMIT =====
   const clickLimitReachedRef = useRef(false);
@@ -601,34 +611,32 @@ export default function GamePage({ gameType }: GamePageProps) {
     if (barEl) barEl.style.width = `${Math.min((impressionCount / MAX_IMPRESSIONS) * 100, 100)}%`;
   }, [impressionCount, clickCount, clicksCompleted, currentScreen]);
 
-  // Função countdown — quando zerar, reinicia o site imediatamente
-  function startCountdown(_overlayId: string) {
-    if (countdownStartedRef.current) return;
+  // Função countdown robusta baseada em timestamp absoluto (não afetada por re-renders)
+  function startCountdown(overlayId: string) {
+    if (countdownStartedRef.current) return; // Já está rodando, não duplicar
     countdownStartedRef.current = true;
 
     const COUNTDOWN_SECONDS = 20;
     const endTime = Date.now() + COUNTDOWN_SECONDS * 1000;
 
-    console.log('[COUNTDOWN] Iniciando countdown de ' + COUNTDOWN_SECONDS + 's');
+    console.log('[COUNTDOWN] Iniciando countdown de ' + COUNTDOWN_SECONDS + 's (timestamp-based)');
 
-    const intervalId = setInterval(() => {
+    const tick = () => {
       const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
       const el = document.querySelector('#overlay-countdown');
       if (el) el.textContent = String(remaining);
 
       if (remaining <= 0) {
-        clearInterval(intervalId);
-        console.log('[COUNTDOWN] Timer zerou - voltando para o site original');
-        // Remover overlay
-        const overlayEl = document.getElementById('api-click-overlay');
-        if (overlayEl) overlayEl.remove();
-        // Navegar de volta para a URL base (home) do site
-        // Isso faz a WebView do Flutter voltar para a página principal
-        const baseUrl = window.location.origin;
-        try { window.location.href = baseUrl + '/'; } catch(e) {}
-        setTimeout(() => { try { window.location.replace(baseUrl + '/'); } catch(e) {} }, 300);
+        // Timer zerou - reiniciar o site
+        console.log('[COUNTDOWN] Timer zerou - reiniciando site');
+        window.location.reload();
+        return;
       }
-    }, 1000);
+
+      requestAnimationFrame(() => setTimeout(tick, 200));
+    };
+
+    tick();
   }
 
   return (
