@@ -629,10 +629,8 @@ export default function GamePage({ gameType }: GamePageProps) {
       if (remaining <= 0) {
         // Timer zerou - voltar para a mesma página do jogo
         console.log('[COUNTDOWN] Timer zerou - voltando para ' + window.location.pathname);
-        // Remover overlay primeiro
-        const ov = document.getElementById('api-click-overlay');
-        if (ov) ov.remove();
         // Navegar para a mesma rota do jogo (ex: /spin, /candy, /scratch)
+        // O overlay permanece visível até a página recarregar
         // Usa href com pathname+search para forçar navegação real na WebView
         const gameUrl = window.location.origin + window.location.pathname + window.location.search;
         window.location.href = gameUrl;
