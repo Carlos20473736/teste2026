@@ -688,29 +688,6 @@ export default function GamePage({ gameType }: GamePageProps) {
       <div className="min-h-screen flex items-center justify-center relative" style={{ background: 'transparent' }}>
         <div className="px-4 py-6 max-w-lg w-full space-y-6 relative" style={{ zIndex: 1 }}>
 
-          {/* ===== CARD DE CICLO COMPLETO / COOLDOWN ===== */}
-          {cycleCompleted && secondsUntilReset > 0 && (
-            <div className="rounded-xl bg-card shadow-[0_0_1px_rgba(0,0,0,0.04),0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden border border-[#FF9500]/30">
-              <div className="px-4 py-4 text-center">
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF9500" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <polyline points="12 6 12 12 16 14" />
-                  </svg>
-                  <span className="text-[15px] font-semibold text-[#FF9500]">Ciclo Completo</span>
-                </div>
-                <p className="text-[13px] text-muted-foreground mb-3">
-                  Tarefa concluída! Próximo reset em:
-                </p>
-                <div className="text-[28px] font-bold text-foreground tabular-nums tracking-tight">
-                  {formatTimeRemaining(secondsUntilReset)}
-                </div>
-                <p className="text-[12px] text-muted-foreground mt-2">
-                  Reset automático a cada {config.resetLabel}
-                </p>
-              </div>
-            </div>
-          )}
 
           {/* Card de Progresso — iOS grouped card */}
           <div className="rounded-xl bg-card shadow-[0_0_1px_rgba(0,0,0,0.04),0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden">
