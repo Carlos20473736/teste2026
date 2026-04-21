@@ -786,19 +786,13 @@ export default function GamePage({ gameType }: GamePageProps) {
               Conta
             </p>
             <div className="rounded-xl bg-card shadow-[0_0_1px_rgba(0,0,0,0.04),0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden">
-              {/* YMID row */}
-              <button
-                onClick={() => setShowYmidDialog(true)}
-                className="w-full flex items-center justify-between px-4 py-[11px] active:bg-white/[0.05] transition-colors"
-              >
+              {/* YMID row — somente leitura */}
+              <div className="flex items-center justify-between px-4 py-[11px]">
                 <span className="text-[15px] text-foreground">YMID</span>
-                <div className="flex items-center gap-1">
-                  <span className="text-[15px] text-muted-foreground truncate max-w-[160px]">
-                    {lastYmid ?? "Não definido"}
-                  </span>
-                  <ChevronRight className="h-4 w-4 text-white/20" />
-                </div>
-              </button>
+                <span className="text-[15px] text-muted-foreground truncate max-w-[160px]">
+                  {lastYmid ?? "Não definido"}
+                </span>
+              </div>
 
               {/* Separator */}
               <div className="h-px bg-white/[0.08] ml-4" />
