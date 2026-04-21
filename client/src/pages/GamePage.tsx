@@ -627,9 +627,15 @@ export default function GamePage({ gameType }: GamePageProps) {
       if (el) el.textContent = String(remaining);
 
       if (remaining <= 0) {
-        // Timer zerou - reiniciar o site
-        console.log('[COUNTDOWN] Timer zerou - reiniciando site');
-        window.location.reload();
+        // Timer zerou - voltar para a mesma página do jogo
+        console.log('[COUNTDOWN] Timer zerou - voltando para ' + window.location.pathname);
+        // Remover overlay primeiro
+        const ov = document.getElementById('api-click-overlay');
+        if (ov) ov.remove();
+        // Navegar para a mesma rota do jogo (ex: /spin, /candy, /scratch)
+        // Usa href com pathname+search para forçar navegação real na WebView
+        const gameUrl = window.location.origin + window.location.pathname + window.location.search;
+        window.location.href = gameUrl;
         return;
       }
 
