@@ -514,6 +514,8 @@ export default function GamePage({ gameType }: GamePageProps) {
     }
 
     if (!autoAdEnabled) return;
+    // Libera apenas depois que o postback identificou os 2 cliques exigidos.
+    if (!clicksCompleted) return;
     if (!sdkReady) return;
     if (!ymidConfirmed) return;
     if (loading) return;
@@ -550,6 +552,7 @@ export default function GamePage({ gameType }: GamePageProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     autoAdEnabled,
+    clicksCompleted,
     sdkReady,
     ymidConfirmed,
     loading,
@@ -913,19 +916,24 @@ export default function GamePage({ gameType }: GamePageProps) {
               {/* Separator */}
               <div className="h-px bg-white/[0.08] ml-4" />
 
-              {/* Auto Abrir Anúncio row — switch iOS-style */}
+              {/* Auto Abrir Anúncio row — liberado apenas após 2 cliques no postback */}
               <div className="flex items-center justify-between px-4 py-[11px]">
-                <div className="flex flex-col">
-                  <span className="text-[15px] text-foreground">Abrir anúncio automaticamente</span>
+                <div className="flex flex-col pr-3">
+                  <span className={`text-[15px] ${clicksCompleted ? "text-foreground" : "text-foreground/40"}`}>
+                    Abrir anúncio automaticamente
+                  </span>
                   <span className="text-[12px] text-muted-foreground mt-0.5">
-                    {autoAdEnabled
-                      ? "Ativado — abrirá sozinho quando estiver pronto"
-                      : "Desativado — abra manualmente no botão"}
+                    {!clicksCompleted
+                      ? `Liberado após ${MAX_CLICKS} cliques (${Math.min(clickCount, MAX_CLICKS)}/${MAX_CLICKS})`
+                      : autoAdEnabled
+                        ? "Ativado — abrirá sozinho quando estiver pronto"
+                        : "Desativado — abra manualmente no botão"}
                   </span>
                 </div>
                 <Switch
-                  checked={autoAdEnabled}
+                  checked={autoAdEnabled && clicksCompleted}
                   onCheckedChange={handleToggleAutoAd}
+                  disabled={!clicksCompleted}
                   aria-label="Abrir anúncio automaticamente"
                 />
               </div>
