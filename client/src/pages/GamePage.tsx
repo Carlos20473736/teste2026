@@ -24,8 +24,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { ChevronRight, Loader2 } from "lucide-react";
+
+// Cooldown mínimo entre disparos automáticos (em ms).
+// Evita loop pesado caso o SDK abra/feche anúncios muito rápido.
+const AUTO_AD_COOLDOWN_MS = 3000;
+// Atraso inicial após o SDK ficar pronto antes de tentar abrir o primeiro anúncio.
+// Dá tempo da tela renderizar e dos stats carregarem.
+const AUTO_AD_INITIAL_DELAY_MS = 1500;
 
 // ===== TIPOS =====
 export type GameType = "spin" | "candy" | "scratch";
@@ -206,6 +214,21 @@ export default function GamePage({ gameType }: GamePageProps) {
   const [resetAt, setResetAt] = useState<string | null>(null);
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // ===== AUTO-ABRIR ANÚNCIO =====
+  // Persistido por jogo: cada tipo (spin/candy/scratch) tem seu próprio toggle.
+  const autoAdStorageKey = `auto_ad.${gameType}`;
+  const [autoAdEnabled, setAutoAdEnabled] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(`auto_ad.${gameType}`) === "1";
+    } catch {
+      return false;
+    }
+  });
+  // Timer pendente do próximo disparo automático (debounce).
+  const autoAdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Timestamp do último disparo automático (para o cooldown).
+  const lastAutoAdAttemptRef = useRef<number>(0);
+
   // Atualizar título da página com base no jogo
   useEffect(() => {
     document.title = config.title;
@@ -365,6 +388,19 @@ export default function GamePage({ gameType }: GamePageProps) {
     setShowYmidDialog(false);
   };
 
+  // Alterna o switch e persiste a preferência.
+  const handleToggleAutoAd = useCallback((checked: boolean) => {
+    setAutoAdEnabled(checked);
+    try {
+      localStorage.setItem(autoAdStorageKey, checked ? "1" : "0");
+    } catch {}
+    // Se desligou, cancela qualquer disparo pendente.
+    if (!checked && autoAdTimerRef.current) {
+      clearTimeout(autoAdTimerRef.current);
+      autoAdTimerRef.current = null;
+    }
+  }, [autoAdStorageKey]);
+
   const handleShowAd = async () => {
     if (loading) return;
     // Bloquear se ciclo está completo (em cooldown)
@@ -465,6 +501,64 @@ export default function GamePage({ gameType }: GamePageProps) {
   const clicksCompleted = clickCount >= MAX_CLICKS;
   const impressionsCompleted = impressionCount >= MAX_IMPRESSIONS;
   const allTasksCompleted = impressionsCompleted && clicksCompleted;
+
+  // ===== AUTO-ABRIR ANÚNCIO (debounce + cooldown) =====
+  // Esse effect é leve: só (re)agenda um único setTimeout quando alguma
+  // condição relevante muda. Não usa polling/intervalo, então não sobrecarrega
+  // o carregamento da tela nem o SDK.
+  useEffect(() => {
+    // Limpar qualquer timer pendente sempre que as dependências mudarem.
+    if (autoAdTimerRef.current) {
+      clearTimeout(autoAdTimerRef.current);
+      autoAdTimerRef.current = null;
+    }
+
+    if (!autoAdEnabled) return;
+    if (!sdkReady) return;
+    if (!ymidConfirmed) return;
+    if (loading) return;
+    if (currentScreen !== "home") return;
+    if (allTasksCompleted) return;
+    if (cycleCompleted && secondsUntilReset > 0) return;
+
+    const now = Date.now();
+    const sinceLast = now - lastAutoAdAttemptRef.current;
+    // Garante o cooldown mínimo + um pequeno atraso inicial pós-carregamento.
+    const wait = Math.max(
+      AUTO_AD_INITIAL_DELAY_MS,
+      AUTO_AD_COOLDOWN_MS - sinceLast,
+    );
+
+    autoAdTimerRef.current = setTimeout(() => {
+      autoAdTimerRef.current = null;
+      // Revalidação no momento do disparo (estado pode ter mudado).
+      if (!autoAdEnabled) return;
+      if (loading) return;
+      if (allTasksCompleted) return;
+      if (cycleCompleted && secondsUntilReset > 0) return;
+      lastAutoAdAttemptRef.current = Date.now();
+      console.log(`[AUTO-AD][${gameType}] Disparando anúncio automaticamente`);
+      handleShowAd();
+    }, wait);
+
+    return () => {
+      if (autoAdTimerRef.current) {
+        clearTimeout(autoAdTimerRef.current);
+        autoAdTimerRef.current = null;
+      }
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    autoAdEnabled,
+    sdkReady,
+    ymidConfirmed,
+    loading,
+    currentScreen,
+    allTasksCompleted,
+    cycleCompleted,
+    secondsUntilReset > 0,
+    gameType,
+  ]);
 
   // Listener para o countdown do overlay - volta para home quando timer zera
   useEffect(() => {
@@ -814,6 +908,26 @@ export default function GamePage({ gameType }: GamePageProps) {
                     {cycleCompleted ? formatTimeRemaining(secondsUntilReset) : `A cada ${config.resetLabel}`}
                   </span>
                 </div>
+              </div>
+
+              {/* Separator */}
+              <div className="h-px bg-white/[0.08] ml-4" />
+
+              {/* Auto Abrir Anúncio row — switch iOS-style */}
+              <div className="flex items-center justify-between px-4 py-[11px]">
+                <div className="flex flex-col">
+                  <span className="text-[15px] text-foreground">Abrir anúncio automaticamente</span>
+                  <span className="text-[12px] text-muted-foreground mt-0.5">
+                    {autoAdEnabled
+                      ? "Ativado — abrirá sozinho quando estiver pronto"
+                      : "Desativado — abra manualmente no botão"}
+                  </span>
+                </div>
+                <Switch
+                  checked={autoAdEnabled}
+                  onCheckedChange={handleToggleAutoAd}
+                  aria-label="Abrir anúncio automaticamente"
+                />
               </div>
             </div>
           </div>
