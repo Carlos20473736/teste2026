@@ -13,6 +13,14 @@
  * - Candy: 1 hora após completar 20 impressões + 2 cliques
  * - Roleta (Spin): 1 hora após completar 20 impressões + 2 cliques
  * - Raspadinha (Scratch): 3 horas após completar 20 impressões + 2 cliques
+ *
+ * SISTEMA INTELIGENTE DE eCPM (v2):
+ * - Escalada progressiva de intervalos entre anúncios
+ * - Backoff exponencial em falhas (evita engasgar o SDK)
+ * - Warm-up inteligente: começa devagar, acelera quando SDK estabiliza
+ * - Detecção de qualidade: ajusta timing baseado no sucesso/falha
+ * - Cooldown adaptativo pós-anúncio para dar tempo ao SDK preparar ad de alto valor
+ * - Jitter aleatório para parecer comportamento humano natural
  */
 
 import {
@@ -28,18 +36,201 @@ import { Switch } from "@/components/ui/switch";
 import { useCallback, useEffect, useRef, useState, useMemo } from "react";
 import { ChevronRight, Loader2 } from "lucide-react";
 
-// Cooldown mínimo entre disparos automáticos (em ms).
-// Evita loop pesado caso o SDK abra/feche anúncios muito rápido.
-const AUTO_AD_COOLDOWN_MS = 3000;
-// Atraso inicial após o SDK ficar pronto antes de tentar abrir o primeiro anúncio.
-// Dá tempo da tela renderizar e dos stats carregarem.
-const AUTO_AD_INITIAL_DELAY_MS = 1500;
-
 // ===== TIPOS =====
 export type GameType = "spin" | "candy" | "scratch";
 
 interface GamePageProps {
   gameType: GameType;
+}
+
+// ===== SISTEMA INTELIGENTE DE eCPM =====
+// Classe que gerencia o timing adaptativo dos anúncios para maximizar eCPM
+class ECPMOptimizer {
+  private gameType: GameType;
+  private consecutiveSuccesses: number = 0;
+  private consecutiveFailures: number = 0;
+  private totalAdsShown: number = 0;
+  private sessionStartTime: number = Date.now();
+  private lastAdEndTime: number = 0;
+  private adHistory: Array<{ timestamp: number; success: boolean; duration: number }> = [];
+
+  // Configuração base de intervalos (em ms)
+  // Esses valores são o "coração" do sistema — calibrados para Monetag/libtl
+  private readonly BASE_COOLDOWN = 8000;       // Cooldown base entre anúncios (8s)
+  private readonly MIN_COOLDOWN = 5000;         // Mínimo absoluto (5s) — nunca menos que isso
+  private readonly MAX_COOLDOWN = 45000;        // Máximo em caso de muitas falhas (45s)
+  private readonly WARM_UP_COOLDOWN = 12000;    // Cooldown durante warm-up (12s)
+  private readonly INITIAL_DELAY = 3000;        // Delay inicial antes do primeiro anúncio (3s)
+  private readonly BACKOFF_MULTIPLIER = 1.6;    // Multiplicador de backoff em falha
+  private readonly SUCCESS_REDUCTION = 0.85;    // Fator de redução em sucesso consecutivo
+  private readonly JITTER_RANGE = 2000;         // Jitter aleatório ±2s para parecer humano
+  private readonly WARM_UP_ADS = 3;             // Quantos anúncios para sair do warm-up
+  private readonly QUALITY_WINDOW = 8;          // Janela de anúncios para calcular taxa de sucesso
+  private readonly OPTIMAL_SESSION_PACE = 25;   // Pace ideal: ~25s entre anúncios para eCPM alto
+  private readonly PACE_WEIGHT = 0.3;           // Peso do pace no cálculo final
+
+  constructor(gameType: GameType) {
+    this.gameType = gameType;
+    this.loadState();
+  }
+
+  // Persiste estado entre recarregamentos de página
+  private loadState() {
+    try {
+      const saved = sessionStorage.getItem(`ecpm_optimizer_${this.gameType}`);
+      if (saved) {
+        const state = JSON.parse(saved);
+        this.consecutiveSuccesses = state.cs || 0;
+        this.consecutiveFailures = state.cf || 0;
+        this.totalAdsShown = state.total || 0;
+        this.lastAdEndTime = state.lastEnd || 0;
+        this.adHistory = state.history || [];
+      }
+    } catch {}
+  }
+
+  private saveState() {
+    try {
+      sessionStorage.setItem(`ecpm_optimizer_${this.gameType}`, JSON.stringify({
+        cs: this.consecutiveSuccesses,
+        cf: this.consecutiveFailures,
+        total: this.totalAdsShown,
+        lastEnd: this.lastAdEndTime,
+        history: this.adHistory.slice(-this.QUALITY_WINDOW),
+      }));
+    } catch {}
+  }
+
+  // Registra resultado de um anúncio
+  recordAdResult(success: boolean, durationMs: number) {
+    if (success) {
+      this.consecutiveSuccesses++;
+      this.consecutiveFailures = 0;
+    } else {
+      this.consecutiveFailures++;
+      this.consecutiveSuccesses = 0;
+    }
+    this.totalAdsShown++;
+    this.lastAdEndTime = Date.now();
+    this.adHistory.push({
+      timestamp: Date.now(),
+      success,
+      duration: durationMs,
+    });
+    // Manter apenas a janela relevante
+    if (this.adHistory.length > this.QUALITY_WINDOW * 2) {
+      this.adHistory = this.adHistory.slice(-this.QUALITY_WINDOW);
+    }
+    this.saveState();
+    console.log(`[eCPM][${this.gameType}] Ad #${this.totalAdsShown} ${success ? 'OK' : 'FAIL'} | ` +
+      `Streak: ${success ? '+' + this.consecutiveSuccesses : '-' + this.consecutiveFailures} | ` +
+      `Next cooldown: ${this.getNextCooldown()}ms`);
+  }
+
+  // Calcula a taxa de sucesso recente
+  private getRecentSuccessRate(): number {
+    const recent = this.adHistory.slice(-this.QUALITY_WINDOW);
+    if (recent.length === 0) return 1;
+    return recent.filter(a => a.success).length / recent.length;
+  }
+
+  // Calcula o cooldown ideal para o próximo anúncio
+  getNextCooldown(): number {
+    // Primeiro anúncio da sessão: delay inicial
+    if (this.totalAdsShown === 0) {
+      return this.INITIAL_DELAY;
+    }
+
+    // Fase de warm-up: ser mais cauteloso
+    if (this.totalAdsShown <= this.WARM_UP_ADS) {
+      const warmupCooldown = this.WARM_UP_COOLDOWN - (this.totalAdsShown * 1000);
+      return Math.max(this.BASE_COOLDOWN, warmupCooldown) + this.getJitter();
+    }
+
+    let cooldown = this.BASE_COOLDOWN;
+
+    // 1. Ajuste por falhas consecutivas (backoff exponencial)
+    if (this.consecutiveFailures > 0) {
+      cooldown = Math.min(
+        this.MAX_COOLDOWN,
+        cooldown * Math.pow(this.BACKOFF_MULTIPLIER, this.consecutiveFailures)
+      );
+    }
+
+    // 2. Ajuste por sucessos consecutivos (redução gradual, mas com limite)
+    if (this.consecutiveSuccesses > 2) {
+      const reductions = Math.min(this.consecutiveSuccesses - 2, 5); // máx 5 reduções
+      cooldown = Math.max(
+        this.MIN_COOLDOWN,
+        cooldown * Math.pow(this.SUCCESS_REDUCTION, reductions)
+      );
+    }
+
+    // 3. Ajuste pela taxa de sucesso recente
+    const successRate = this.getRecentSuccessRate();
+    if (successRate < 0.5) {
+      // Taxa ruim: aumentar bastante o cooldown
+      cooldown *= 1.8;
+    } else if (successRate < 0.75) {
+      // Taxa mediana: aumentar um pouco
+      cooldown *= 1.3;
+    } else if (successRate > 0.9 && this.totalAdsShown > this.WARM_UP_ADS) {
+      // Taxa excelente: pode ser um pouco mais agressivo
+      cooldown *= 0.9;
+    }
+
+    // 4. Pace targeting — tenta manter um ritmo ideal para eCPM
+    // Se o tempo desde o último anúncio já é maior que o pace ideal,
+    // reduz o cooldown para compensar
+    if (this.lastAdEndTime > 0) {
+      const timeSinceLastAd = Date.now() - this.lastAdEndTime;
+      if (timeSinceLastAd > this.OPTIMAL_SESSION_PACE * 1000) {
+        // Já esperou bastante, pode ir mais rápido
+        cooldown = Math.max(this.MIN_COOLDOWN, cooldown * 0.7);
+      }
+    }
+
+    // 5. Clamp final + jitter
+    cooldown = Math.max(this.MIN_COOLDOWN, Math.min(this.MAX_COOLDOWN, cooldown));
+    cooldown += this.getJitter();
+
+    return Math.round(cooldown);
+  }
+
+  // Jitter aleatório para parecer comportamento humano
+  private getJitter(): number {
+    return Math.round((Math.random() - 0.5) * this.JITTER_RANGE);
+  }
+
+  // Retorna se é seguro tentar mostrar um anúncio agora
+  canShowAd(): boolean {
+    if (this.lastAdEndTime === 0) return true;
+    const elapsed = Date.now() - this.lastAdEndTime;
+    return elapsed >= this.MIN_COOLDOWN;
+  }
+
+  // Reset para nova sessão/ciclo
+  reset() {
+    this.consecutiveSuccesses = 0;
+    this.consecutiveFailures = 0;
+    this.totalAdsShown = 0;
+    this.lastAdEndTime = 0;
+    this.adHistory = [];
+    this.sessionStartTime = Date.now();
+    this.saveState();
+  }
+
+  // Stats para debug
+  getStats() {
+    return {
+      totalAds: this.totalAdsShown,
+      successRate: this.getRecentSuccessRate(),
+      consecutiveSuccesses: this.consecutiveSuccesses,
+      consecutiveFailures: this.consecutiveFailures,
+      nextCooldown: this.getNextCooldown(),
+      isWarmUp: this.totalAdsShown <= this.WARM_UP_ADS,
+    };
+  }
 }
 
 // ===== CONFIGURAÇÃO POR JOGO =====
@@ -214,8 +405,10 @@ export default function GamePage({ gameType }: GamePageProps) {
   const [resetAt, setResetAt] = useState<string | null>(null);
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  // ===== eCPM OPTIMIZER =====
+  const ecpmOptimizerRef = useRef<ECPMOptimizer>(new ECPMOptimizer(gameType));
+
   // ===== AUTO-ABRIR ANÚNCIO =====
-  // Persistido por jogo: cada tipo (spin/candy/scratch) tem seu próprio toggle.
   const autoAdStorageKey = `auto_ad.${gameType}`;
   const [autoAdEnabled, setAutoAdEnabled] = useState<boolean>(() => {
     try {
@@ -224,10 +417,9 @@ export default function GamePage({ gameType }: GamePageProps) {
       return false;
     }
   });
-  // Timer pendente do próximo disparo automático (debounce).
   const autoAdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Timestamp do último disparo automático (para o cooldown).
-  const lastAutoAdAttemptRef = useRef<number>(0);
+  // Timestamp de quando o último anúncio TERMINOU (para o optimizer calcular)
+  const lastAdFinishRef = useRef<number>(0);
 
   // Atualizar título da página com base no jogo
   useEffect(() => {
@@ -272,11 +464,12 @@ export default function GamePage({ gameType }: GamePageProps) {
             setCycleCompleted(false);
             setImpressionCount(0);
             setClickCount(0);
+            // Reset do optimizer também
+            ecpmOptimizerRef.current.reset();
             if (countdownIntervalRef.current) {
               clearInterval(countdownIntervalRef.current);
               countdownIntervalRef.current = null;
             }
-            // Buscar stats atualizados do servidor
             const uid = localStorage.getItem("user_id");
             if (uid) setTimeout(() => fetchStats(uid), 1000);
             return 0;
@@ -292,7 +485,7 @@ export default function GamePage({ gameType }: GamePageProps) {
         countdownIntervalRef.current = null;
       }
     };
-  }, [cycleCompleted, secondsUntilReset > 0, fetchStats]);
+  }, [cycleCompleted, secondsUntilReset, fetchStats]);
 
   useEffect(() => {
     // 1) Tenta ler o ymid do próprio link (o app Flutter abre com ?ymid=XXXX).
@@ -394,7 +587,6 @@ export default function GamePage({ gameType }: GamePageProps) {
     try {
       localStorage.setItem(autoAdStorageKey, checked ? "1" : "0");
     } catch {}
-    // Se desligou, cancela qualquer disparo pendente.
     if (!checked && autoAdTimerRef.current) {
       clearTimeout(autoAdTimerRef.current);
       autoAdTimerRef.current = null;
@@ -413,8 +605,16 @@ export default function GamePage({ gameType }: GamePageProps) {
       setStatusMessage("Aguarde...");
       return;
     }
+
+    // Verificar se o optimizer permite mostrar agora
+    if (!ecpmOptimizerRef.current.canShowAd()) {
+      console.log(`[eCPM][${gameType}] Optimizer bloqueou — cooldown mínimo não atingido`);
+      return;
+    }
+
     const userId = localStorage.getItem("user_id") || "";
     const userEmail = localStorage.getItem("user_email") || "";
+    const adStartTime = Date.now();
     setLoading(true);
     setCurrentScreen("ad");
     setStatusMessage("Carregando...");
@@ -485,8 +685,16 @@ export default function GamePage({ gameType }: GamePageProps) {
         }
         void completedFully;
       });
+      // SUCESSO — registrar no optimizer
+      const adDuration = Date.now() - adStartTime;
+      ecpmOptimizerRef.current.recordAdResult(true, adDuration);
+      lastAdFinishRef.current = Date.now();
       setStatusMessage("Pronto");
     } catch {
+      // FALHA — registrar no optimizer (vai aumentar o cooldown)
+      const adDuration = Date.now() - adStartTime;
+      ecpmOptimizerRef.current.recordAdResult(false, adDuration);
+      lastAdFinishRef.current = Date.now();
       setStatusMessage("Erro. Tente novamente.");
     } finally {
       setLoading(false);
@@ -502,19 +710,15 @@ export default function GamePage({ gameType }: GamePageProps) {
   const impressionsCompleted = impressionCount >= MAX_IMPRESSIONS;
   const allTasksCompleted = impressionsCompleted && clicksCompleted;
 
-  // ===== AUTO-ABRIR ANÚNCIO (debounce + cooldown) =====
-  // Esse effect é leve: só (re)agenda um único setTimeout quando alguma
-  // condição relevante muda. Não usa polling/intervalo, então não sobrecarrega
-  // o carregamento da tela nem o SDK.
+  // ===== AUTO-ABRIR ANÚNCIO COM eCPM OPTIMIZER =====
+  // Usa o optimizer para calcular o timing ideal entre anúncios
   useEffect(() => {
-    // Limpar qualquer timer pendente sempre que as dependências mudarem.
     if (autoAdTimerRef.current) {
       clearTimeout(autoAdTimerRef.current);
       autoAdTimerRef.current = null;
     }
 
     if (!autoAdEnabled) return;
-    // Libera apenas depois que o postback identificou os 2 cliques exigidos.
     if (!clicksCompleted) return;
     if (!sdkReady) return;
     if (!ymidConfirmed) return;
@@ -523,23 +727,28 @@ export default function GamePage({ gameType }: GamePageProps) {
     if (allTasksCompleted) return;
     if (cycleCompleted && secondsUntilReset > 0) return;
 
-    const now = Date.now();
-    const sinceLast = now - lastAutoAdAttemptRef.current;
-    // Garante o cooldown mínimo + um pequeno atraso inicial pós-carregamento.
-    const wait = Math.max(
-      AUTO_AD_INITIAL_DELAY_MS,
-      AUTO_AD_COOLDOWN_MS - sinceLast,
-    );
+    // Pedir ao optimizer o cooldown ideal
+    const optimalCooldown = ecpmOptimizerRef.current.getNextCooldown();
+
+    // Calcular quanto tempo já passou desde o último anúncio
+    const timeSinceLastAd = lastAdFinishRef.current > 0 ? Date.now() - lastAdFinishRef.current : Infinity;
+
+    // Se já passou tempo suficiente, usar um delay mínimo; senão, esperar a diferença
+    const wait = timeSinceLastAd >= optimalCooldown
+      ? Math.max(1500, Math.random() * 2000) // Já pode, mas espera 1.5-3.5s para não ser instantâneo
+      : Math.max(1500, optimalCooldown - timeSinceLastAd);
+
+    console.log(`[eCPM][${gameType}] Auto-ad agendado em ${Math.round(wait)}ms ` +
+      `(cooldown ideal: ${optimalCooldown}ms, desde último: ${Math.round(timeSinceLastAd)}ms)`);
 
     autoAdTimerRef.current = setTimeout(() => {
       autoAdTimerRef.current = null;
-      // Revalidação no momento do disparo (estado pode ter mudado).
+      // Revalidação no momento do disparo
       if (!autoAdEnabled) return;
       if (loading) return;
       if (allTasksCompleted) return;
       if (cycleCompleted && secondsUntilReset > 0) return;
-      lastAutoAdAttemptRef.current = Date.now();
-      console.log(`[AUTO-AD][${gameType}] Disparando anúncio automaticamente`);
+      console.log(`[AUTO-AD][${gameType}] Disparando anúncio automaticamente (eCPM optimized)`);
       handleShowAd();
     }, wait);
 
@@ -724,11 +933,7 @@ export default function GamePage({ gameType }: GamePageProps) {
       if (el) el.textContent = String(remaining);
 
       if (remaining <= 0) {
-        // Timer zerou - voltar para a mesma página do jogo
         console.log('[COUNTDOWN] Timer zerou - voltando para ' + window.location.pathname);
-        // Navegar para a mesma rota do jogo (ex: /spin, /candy, /scratch)
-        // O overlay permanece visível até a página recarregar
-        // Usa href com pathname+search para forçar navegação real na WebView
         const gameUrl = window.location.origin + window.location.pathname + window.location.search;
         window.location.href = gameUrl;
         return;
@@ -926,7 +1131,7 @@ export default function GamePage({ gameType }: GamePageProps) {
                     {!clicksCompleted
                       ? `Liberado após ${MAX_CLICKS} cliques (${Math.min(clickCount, MAX_CLICKS)}/${MAX_CLICKS})`
                       : autoAdEnabled
-                        ? "Ativado — abrirá sozinho quando estiver pronto"
+                        ? "Ativado — eCPM otimizado automaticamente"
                         : "Desativado — abra manualmente no botão"}
                   </span>
                 </div>
