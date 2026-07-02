@@ -1,40 +1,11 @@
 /*
- * Design: iOS / Apple Human Interface Guidelines
- * - Grouped table view layout with white cards on gray background
- * - SF Pro typography via -apple-system
- * - iOS blue (#007AFF) as primary accent
- * - Rounded 12px cards, thin separators, subtle shadows
- * - Native iOS-style progress bars and list rows
- *
- * Componente genérico para os 3 jogos: spin (roleta), candy, scratch (raspadinha).
- * Recebe `gameType` como prop para identificar qual jogo está ativo.
- *
- * CICLOS DE RESET (baseado no servidor):
- * - Candy: 1 hora após completar 20 impressões + 2 cliques
- * - Roleta (Spin): 1 hora após completar 20 impressões + 2 cliques
- * - Raspadinha (Scratch): 3 horas após completar 20 impressões + 2 cliques
- *
- * SISTEMA INTELIGENTE DE eCPM (v2):
- * - Escalada progressiva de intervalos entre anúncios
- * - Backoff exponencial em falhas (evita engasgar o SDK)
- * - Warm-up inteligente: começa devagar, acelera quando SDK estabiliza
- * - Detecção de qualidade: ajusta timing baseado no sucesso/falha
- * - Cooldown adaptativo pós-anúncio para dar tempo ao SDK preparar ad de alto valor
- * - Jitter aleatório para parecer comportamento humano natural
+ * MONETAG AUTO BOT - Versão para Jogos (Spin/Candy/Scratch)
+ * 
+ * Mesmo design e lógica da Home, diferenciando apenas pelo Zone ID do SDK.
+ * O YMID vem pelo link (?ymid=XXX).
  */
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
-import { useCallback, useEffect, useRef, useState, useMemo } from "react";
-import { ChevronRight, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 // ===== TIPOS =====
 export type GameType = "spin" | "candy" | "scratch";
@@ -43,10 +14,50 @@ interface GamePageProps {
   gameType: GameType;
 }
 
-// ===== SISTEMA INTELIGENTE DE eCPM =====
-// Classe que gerencia o timing adaptativo dos anúncios para maximizar eCPM
+// ===== CONFIGURAÇÃO POR JOGO =====
+const GAME_CONFIG: Record<
+  GameType,
+  {
+    label: string;
+    title: string;
+    zoneId: string;
+    sdkGlobal: string;
+    source: string;
+    resetLabel: string;
+    resetSeconds: number;
+  }
+> = {
+  spin: {
+    label: "Roleta",
+    title: "Roleta - Ganhe Recompensas",
+    zoneId: "11158500",
+    sdkGlobal: "show_11158500",
+    source: "roulette",
+    resetLabel: "1 hora",
+    resetSeconds: 3600,
+  },
+  candy: {
+    label: "Candy",
+    title: "Candy - Ganhe Recompensas",
+    zoneId: "11158509",
+    sdkGlobal: "show_11158509",
+    source: "candy",
+    resetLabel: "1 hora",
+    resetSeconds: 3600,
+  },
+  scratch: {
+    label: "Raspadinha",
+    title: "Raspadinha - Ganhe Recompensas",
+    zoneId: "11158518",
+    sdkGlobal: "show_11158518",
+    source: "scratch",
+    resetLabel: "3 horas",
+    resetSeconds: 10800,
+  },
+};
+
+// ===== SISTEMA DE eCPM COM TIMINGS FIXOS + RANDOM =====
 class ECPMOptimizer {
-  private gameType: GameType;
   private consecutiveSuccesses: number = 0;
   private consecutiveFailures: number = 0;
   private totalAdsShown: number = 0;
@@ -54,27 +65,40 @@ class ECPMOptimizer {
   private lastAdEndTime: number = 0;
   private adHistory: Array<{ timestamp: number; success: boolean; duration: number }> = [];
 
-  // Configuração base de intervalos (em ms)
-  // Esses valores são o "coração" do sistema — calibrados para Monetag/libtl
-  private readonly BASE_COOLDOWN = 8000;       // Cooldown base entre anúncios (8s)
-  private readonly MIN_COOLDOWN = 5000;         // Mínimo absoluto (5s) — nunca menos que isso
-  private readonly MAX_COOLDOWN = 45000;        // Máximo em caso de muitas falhas (45s)
-  private readonly WARM_UP_COOLDOWN = 12000;    // Cooldown durante warm-up (12s)
-  private readonly INITIAL_DELAY = 3000;        // Delay inicial antes do primeiro anúncio (3s)
-  private readonly BACKOFF_MULTIPLIER = 1.6;    // Multiplicador de backoff em falha
-  private readonly SUCCESS_REDUCTION = 0.85;    // Fator de redução em sucesso consecutivo
-  private readonly JITTER_RANGE = 2000;         // Jitter aleatório ±2s para parecer humano
-  private readonly WARM_UP_ADS = 3;             // Quantos anúncios para sair do warm-up
-  private readonly QUALITY_WINDOW = 8;          // Janela de anúncios para calcular taxa de sucesso
-  private readonly OPTIMAL_SESSION_PACE = 25;   // Pace ideal: ~25s entre anúncios para eCPM alto
-  private readonly PACE_WEIGHT = 0.3;           // Peso do pace no cálculo final
+  private readonly BASE_COOLDOWN: number;
+  private readonly MIN_COOLDOWN: number;
+  private readonly MAX_COOLDOWN: number;
+  private readonly WARM_UP_COOLDOWN: number;
+  private readonly INITIAL_DELAY: number;
+  private readonly BACKOFF_MULTIPLIER: number;
+  private readonly SUCCESS_REDUCTION: number;
+  private readonly JITTER_RANGE: number;
+  private readonly WARM_UP_ADS: number;
+  private readonly QUALITY_WINDOW = 8;
+  private readonly OPTIMAL_SESSION_PACE: number;
+  private gameType: string;
 
-  constructor(gameType: GameType) {
+  constructor(gameType: string) {
     this.gameType = gameType;
+    this.BASE_COOLDOWN = this.randomize(8000, 0.25);
+    this.MIN_COOLDOWN = this.randomize(5000, 0.2);
+    this.MAX_COOLDOWN = this.randomize(45000, 0.2);
+    this.WARM_UP_COOLDOWN = this.randomize(12000, 0.25);
+    this.INITIAL_DELAY = this.randomize(3000, 0.3);
+    this.BACKOFF_MULTIPLIER = 1.4 + Math.random() * 0.4;
+    this.SUCCESS_REDUCTION = 0.8 + Math.random() * 0.1;
+    this.JITTER_RANGE = this.randomize(2000, 0.3);
+    this.WARM_UP_ADS = Math.floor(2 + Math.random() * 3);
+    this.OPTIMAL_SESSION_PACE = this.randomize(25, 0.3);
     this.loadState();
   }
 
-  // Persiste estado entre recarregamentos de página
+  private randomize(base: number, variance: number): number {
+    const min = base * (1 - variance);
+    const max = base * (1 + variance);
+    return Math.round(min + Math.random() * (max - min));
+  }
+
   private loadState() {
     try {
       const saved = sessionStorage.getItem(`ecpm_optimizer_${this.gameType}`);
@@ -101,7 +125,6 @@ class ECPMOptimizer {
     } catch {}
   }
 
-  // Registra resultado de um anúncio
   recordAdResult(success: boolean, durationMs: number) {
     if (success) {
       this.consecutiveSuccesses++;
@@ -112,12 +135,7 @@ class ECPMOptimizer {
     }
     this.totalAdsShown++;
     this.lastAdEndTime = Date.now();
-    this.adHistory.push({
-      timestamp: Date.now(),
-      success,
-      duration: durationMs,
-    });
-    // Manter apenas a janela relevante
+    this.adHistory.push({ timestamp: Date.now(), success, duration: durationMs });
     if (this.adHistory.length > this.QUALITY_WINDOW * 2) {
       this.adHistory = this.adHistory.slice(-this.QUALITY_WINDOW);
     }
@@ -127,89 +145,51 @@ class ECPMOptimizer {
       `Next cooldown: ${this.getNextCooldown()}ms`);
   }
 
-  // Calcula a taxa de sucesso recente
   private getRecentSuccessRate(): number {
     const recent = this.adHistory.slice(-this.QUALITY_WINDOW);
     if (recent.length === 0) return 1;
     return recent.filter(a => a.success).length / recent.length;
   }
 
-  // Calcula o cooldown ideal para o próximo anúncio
   getNextCooldown(): number {
-    // Primeiro anúncio da sessão: delay inicial
-    if (this.totalAdsShown === 0) {
-      return this.INITIAL_DELAY;
-    }
-
-    // Fase de warm-up: ser mais cauteloso
+    if (this.totalAdsShown === 0) return this.INITIAL_DELAY;
     if (this.totalAdsShown <= this.WARM_UP_ADS) {
       const warmupCooldown = this.WARM_UP_COOLDOWN - (this.totalAdsShown * 1000);
       return Math.max(this.BASE_COOLDOWN, warmupCooldown) + this.getJitter();
     }
-
     let cooldown = this.BASE_COOLDOWN;
-
-    // 1. Ajuste por falhas consecutivas (backoff exponencial)
     if (this.consecutiveFailures > 0) {
-      cooldown = Math.min(
-        this.MAX_COOLDOWN,
-        cooldown * Math.pow(this.BACKOFF_MULTIPLIER, this.consecutiveFailures)
-      );
+      cooldown = Math.min(this.MAX_COOLDOWN, cooldown * Math.pow(this.BACKOFF_MULTIPLIER, this.consecutiveFailures));
     }
-
-    // 2. Ajuste por sucessos consecutivos (redução gradual, mas com limite)
     if (this.consecutiveSuccesses > 2) {
-      const reductions = Math.min(this.consecutiveSuccesses - 2, 5); // máx 5 reduções
-      cooldown = Math.max(
-        this.MIN_COOLDOWN,
-        cooldown * Math.pow(this.SUCCESS_REDUCTION, reductions)
-      );
+      const reductions = Math.min(this.consecutiveSuccesses - 2, 5);
+      cooldown = Math.max(this.MIN_COOLDOWN, cooldown * Math.pow(this.SUCCESS_REDUCTION, reductions));
     }
-
-    // 3. Ajuste pela taxa de sucesso recente
     const successRate = this.getRecentSuccessRate();
-    if (successRate < 0.5) {
-      // Taxa ruim: aumentar bastante o cooldown
-      cooldown *= 1.8;
-    } else if (successRate < 0.75) {
-      // Taxa mediana: aumentar um pouco
-      cooldown *= 1.3;
-    } else if (successRate > 0.9 && this.totalAdsShown > this.WARM_UP_ADS) {
-      // Taxa excelente: pode ser um pouco mais agressivo
-      cooldown *= 0.9;
-    }
-
-    // 4. Pace targeting — tenta manter um ritmo ideal para eCPM
-    // Se o tempo desde o último anúncio já é maior que o pace ideal,
-    // reduz o cooldown para compensar
+    if (successRate < 0.5) cooldown *= 1.8;
+    else if (successRate < 0.75) cooldown *= 1.3;
+    else if (successRate > 0.9 && this.totalAdsShown > this.WARM_UP_ADS) cooldown *= 0.9;
     if (this.lastAdEndTime > 0) {
       const timeSinceLastAd = Date.now() - this.lastAdEndTime;
       if (timeSinceLastAd > this.OPTIMAL_SESSION_PACE * 1000) {
-        // Já esperou bastante, pode ir mais rápido
         cooldown = Math.max(this.MIN_COOLDOWN, cooldown * 0.7);
       }
     }
-
-    // 5. Clamp final + jitter
     cooldown = Math.max(this.MIN_COOLDOWN, Math.min(this.MAX_COOLDOWN, cooldown));
     cooldown += this.getJitter();
-
     return Math.round(cooldown);
   }
 
-  // Jitter aleatório para parecer comportamento humano
   private getJitter(): number {
     return Math.round((Math.random() - 0.5) * this.JITTER_RANGE);
   }
 
-  // Retorna se é seguro tentar mostrar um anúncio agora
   canShowAd(): boolean {
     if (this.lastAdEndTime === 0) return true;
     const elapsed = Date.now() - this.lastAdEndTime;
     return elapsed >= this.MIN_COOLDOWN;
   }
 
-  // Reset para nova sessão/ciclo
   reset() {
     this.consecutiveSuccesses = 0;
     this.consecutiveFailures = 0;
@@ -220,7 +200,6 @@ class ECPMOptimizer {
     this.saveState();
   }
 
-  // Stats para debug
   getStats() {
     return {
       totalAds: this.totalAdsShown,
@@ -233,99 +212,255 @@ class ECPMOptimizer {
   }
 }
 
-// ===== CONFIGURAÇÃO POR JOGO =====
-
-
-const GAME_CONFIG: Record<
-  GameType,
-  {
-    label: string;
-    emoji: string;
-    title: string;
-    zoneId: string;
-    sdkGlobal: string;
-
-    source: "roulette" | "candy" | "scratch";
-    resetLabel: string;
-  }
-> = {
-  spin: {
-    label: "Roleta",
-    emoji: "\u{1F3B0}",
-    title: "Roleta - Ganhe Recompensas",
-    zoneId: "11158500",
-    sdkGlobal: "show_11158500",
-
-    source: "roulette",
-    resetLabel: "1 hora",
-  },
-  candy: {
-    label: "Candy",
-    emoji: "\u{1F36C}",
-    title: "Candy - Ganhe Recompensas",
-    zoneId: "11158509",
-    sdkGlobal: "show_11158509",
-
-    source: "candy",
-    resetLabel: "1 hora",
-  },
-  scratch: {
-    label: "Raspadinha",
-    emoji: "\u{1F3AB}",
-    title: "Raspadinha - Ganhe Recompensas",
-    zoneId: "11158518",
-    sdkGlobal: "show_11158518",
-
-    source: "scratch",
-    resetLabel: "3 horas",
-  },
-};
-
+// ===== CONSTANTES =====
+const DOMAIN = "libtl.com";
 const MAX_IMPRESSIONS = 20;
 const MAX_CLICKS = 2;
 
+// ===== OAID SNIFFER =====
+let SDK_REAL_OAID: string | null = null;
 
+function installOaidSniffer() {
+  if ((window as any).__oaidSnifferInstalled) return;
+  (window as any).__oaidSnifferInstalled = true;
 
-declare global {
-  interface Window {
-    Telegram?: {
-      WebApp?: {
-        ready?: () => void;
-        initDataUnsafe?: {
-          user?: { id?: number; username?: string };
-        };
-      };
-    };
-    [key: string]: any;
+  const capture = (url: string) => {
+    try {
+      if (!url || url.indexOf('e8ys.com') === -1) return;
+      const q = url.split('?')[1];
+      if (!q) return;
+      const val = new URLSearchParams(q).get('oaid');
+      if (val && !SDK_REAL_OAID) {
+        SDK_REAL_OAID = val;
+        try { localStorage.setItem('monetag_oaid', val); } catch {}
+        console.log('[OAID] Capturado oaid REAL do SDK:', val);
+      }
+    } catch {}
+  };
+
+  const origFetch = window.fetch.bind(window);
+  window.fetch = function (input: any, init?: any) {
+    try {
+      const u = typeof input === 'string' ? input : (input && input.url) || '';
+      capture(u);
+    } catch {}
+    return origFetch(input, init);
+  } as typeof window.fetch;
+
+  const origOpen = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function (this: XMLHttpRequest, method: string, url: string, ...rest: any[]) {
+    try { capture(url); } catch {}
+    // @ts-ignore
+    return origOpen.call(this, method, url, ...rest);
+  } as any;
+}
+
+if (typeof window !== 'undefined') {
+  try { installOaidSniffer(); } catch {}
+}
+
+// ===== GERAÇÃO ALEATÓRIA DE IDs =====
+function generateRandomYmid(): string {
+  return `navigation${Math.floor(10000000 + Math.random() * 89999999)}`;
+}
+
+function generateRandomTelegramId(): string {
+  return String(Math.floor(1000000000 + Math.random() * 8999999999));
+}
+
+function getRealOaid(): string {
+  if (SDK_REAL_OAID) return SDK_REAL_OAID;
+  try {
+    const saved = localStorage.getItem('monetag_oaid');
+    if (saved) { SDK_REAL_OAID = saved; return saved; }
+  } catch {}
+  return '';
+}
+
+function getConfig(gameType: GameType) {
+  const config = GAME_CONFIG[gameType];
+  const params = new URLSearchParams(window.location.search);
+  const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
+
+  const ymid = params.get('ymid') || hashParams.get('ymid') || localStorage.getItem(`monetag_ymid_${gameType}`) || generateRandomYmid();
+  const telegramId = params.get('tgid') || hashParams.get('tgid') || localStorage.getItem(`monetag_tgid_${gameType}`) || generateRandomTelegramId();
+  const oaid = getRealOaid();
+
+  localStorage.setItem(`monetag_ymid_${gameType}`, ymid);
+  localStorage.setItem(`monetag_tgid_${gameType}`, telegramId);
+
+  return { ymid, oaid, telegramId, zoneId: config.zoneId };
+}
+
+// ===== FINGERPRINT =====
+function getAndroidModel(): string {
+  const ua = navigator.userAgent;
+  const match = ua.match(/;\s*([^;)]+)\s*Build\//);
+  if (match) return match[1].trim();
+  const match2 = ua.match(/Android[^;]*;\s*([^;)]+)/);
+  if (match2) return match2[1].trim();
+  return 'SM-A546B';
+}
+
+function getBrowserVersion(): string {
+  const ua = navigator.userAgent;
+  const match = ua.match(/(?:Chrome|CriOS)\/([\d.]+)/);
+  if (match) return match[1];
+  const ff = ua.match(/Firefox\/([\d.]+)/);
+  if (ff) return ff[1];
+  const sf = ua.match(/Version\/([\d.]+)/);
+  if (sf) return sf[1];
+  return '148.0.7778.182';
+}
+
+function getOSVersion(): string {
+  const ua = navigator.userAgent;
+  const match = ua.match(/Android\s+([\d.]+)/);
+  if (match) return match[1];
+  const ios = ua.match(/OS\s+([\d_]+)/);
+  if (ios) return ios[1].replace(/_/g, '.');
+  return '14.0.0';
+}
+
+function buildParams(config: { ymid: string; oaid: string; telegramId: string; zoneId: string }) {
+  const ts = Math.floor(Date.now() / 1000);
+  const baseUrl = window.location.origin + window.location.pathname;
+  const pageUrl = `${baseUrl}#tgWebAppData=query_id%3DAAH${config.telegramId}%26user%3D%257B%2522id%2522%253A${config.telegramId}%252C%2522first_name%2522%253A%2522User%2522%257D%26auth_date%3D${ts}%26hash%3Dd7831c17149d456cb3373ad87f38bedfbddbd1a64746e14813cbad7cd9963885&tgWebAppVersion=8.0&tgWebAppPlatform=android`;
+  
+  const realOaid = getRealOaid() || config.oaid;
+  return new URLSearchParams({
+    '_z': config.zoneId,
+    'oaid': realOaid,
+    'var': `${config.ymid}@youngmoney.app`,
+    'ymid': config.ymid,
+    'tgp': 'android',
+    'tglc': '',
+    'sdkp': '1',
+    'var_3': config.telegramId,
+    'of': 'true',
+    'os': 'android',
+    'is_mobile': 'true',
+    'sw_version': 'v1.841.0',
+    'android_model': getAndroidModel(),
+    'browser_version': getBrowserVersion(),
+    'os_version': getOSVersion(),
+    'dmn': DOMAIN,
+    'fs': '0',
+    'cf': '0',
+    'sw': String(screen.width || 1920),
+    'sh': String(screen.height || 1080),
+    'sah': String((screen as any).availHeight || 1040),
+    'wx': String(window.screenX || Math.floor(Math.random() * 500)),
+    'wy': String(window.screenY || Math.floor(Math.random() * 20)),
+    'ww': String(window.innerWidth || 500),
+    'wh': String(window.innerHeight || 900),
+    'cw': String(document.documentElement.clientWidth || 484),
+    'wiw': String(window.innerWidth || 484),
+    'wih': String(window.innerHeight || 800),
+    'wfc': '1',
+    'pl': pageUrl,
+    'np': '0',
+    'pt': '0',
+    'nb': '1',
+    'ng': '1',
+    'ix': '0',
+    'nw': '1',
+    'tb': 'true',
+    'vsbl': 'true',
+    'navlng': navigator.language || 'pt-BR',
+    'bto': String(new Date().getTimezoneOffset()),
+    'btz': Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Sao_Paulo',
+    'jsp': '1',
+    'excludes': '',
+  });
+}
+
+async function waitForRealOaid(timeoutMs = 20000): Promise<string> {
+  const start = Date.now();
+  while (!getRealOaid()) {
+    if (Date.now() - start > timeoutMs) {
+      throw new Error('oaid real do SDK ainda não disponível');
+    }
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  return getRealOaid();
+}
+
+async function fetchAds(config: { ymid: string; oaid: string; telegramId: string; zoneId: string }) {
+  await waitForRealOaid();
+  const params = buildParams(config);
+  const url = `https://e8ys.com/500/${config.zoneId}?${params.toString()}`;
+  
+  const resp = await fetch(url, {
+    method: 'GET',
+    headers: { 'Accept': '*/*' },
+  });
+  
+  if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  
+  const text = await resp.text();
+  try {
+    return JSON.parse(text);
+  } catch {
+    try {
+      const decoded = atob(text);
+      return JSON.parse(decoded);
+    } catch {
+      throw new Error(`Resposta inválida`);
+    }
   }
 }
 
-const getTelegramUserId = () => {
-  const telegramId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id;
-  return telegramId ? String(telegramId) : null;
-};
-
-const getOrCreateStoredIdentity = (customYmid?: string) => {
-  if (customYmid) {
-    localStorage.setItem("user_id", customYmid);
-    localStorage.setItem("user_email", `${customYmid}@youngmoney.app`);
+async function resolveRuid(ruid: string) {
+  try {
+    const resp = await fetch(`https://e8ys.com/resolve?ruid=${ruid}`);
+    if (resp.status === 204 || !resp.ok) return null;
+    const text = await resp.text();
+    if (!text.trim()) return null;
+    return JSON.parse(text);
+  } catch {
+    return null;
   }
-  const storedUserId = localStorage.getItem("user_id");
-  const storedUserEmail = localStorage.getItem("user_email");
-  if (storedUserId && storedUserEmail) {
-    return { userId: storedUserId, userEmail: storedUserEmail };
-  }
-  const telegramUserId = getTelegramUserId();
-  const generatedUserId = telegramUserId ?? `guest_${Date.now()}`;
-  const generatedUserEmail = `${generatedUserId}@youngmoney.app`;
-  localStorage.setItem("user_id", generatedUserId);
-  localStorage.setItem("user_email", generatedUserEmail);
-  return { userId: generatedUserId, userEmail: generatedUserEmail };
-};
+}
 
+function humanDelay(minMs: number, maxMs: number): Promise<void> {
+  const delay = minMs + Math.random() * (maxMs - minMs);
+  return new Promise(r => setTimeout(r, delay));
+}
 
+// ===== GERAÇÃO ALEATÓRIA DE TIMINGS POR SESSÃO =====
+function generateSessionTimings() {
+  const rand = (base: number, variance: number) => {
+    const min = base * (1 - variance);
+    const max = base * (1 + variance);
+    return Math.round(min + Math.random() * (max - min));
+  };
 
-// Formatar tempo restante em HH:MM:SS
+  return {
+    delayBetweenCyclesMin: rand(2000, 0.4),
+    delayBetweenCyclesMax: rand(6000, 0.35),
+    viewTimeBase: rand(15000, 0.3),
+    viewTimeVariance: rand(5000, 0.4),
+    clickDelayMin: rand(1500, 0.35),
+    clickDelayMax: rand(4000, 0.3),
+    resolveDelayMin: rand(3000, 0.3),
+    resolveDelayMax: rand(7000, 0.3),
+    clickCycles: generateClickCycles(),
+    pauseChance: 0.1 + Math.random() * 0.15,
+    pauseDuration: rand(8000, 0.4),
+  };
+}
+
+function generateClickCycles(): number[] {
+  const cycles: number[] = [];
+  const firstClick = Math.floor(2 + Math.random() * 8);
+  const secondClick = Math.floor(firstClick + 3 + Math.random() * 8);
+  cycles.push(firstClick);
+  cycles.push(Math.min(secondClick, MAX_IMPRESSIONS));
+  return cycles;
+}
+
+// ===== COUNTDOWN / TIMER =====
 function formatTimeRemaining(seconds: number): string {
   if (seconds <= 0) return "00:00:00";
   const h = Math.floor(seconds / 3600);
@@ -334,70 +469,179 @@ function formatTimeRemaining(seconds: number): string {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-// iOS-style progress bar component
-function IOSProgressBar({ value, color }: { value: number; color: string }) {
+// ===== STARRY BACKGROUND =====
+function StarryBackground() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animationId: number;
+
+    const resize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    resize();
+    window.addEventListener('resize', resize);
+
+    const stars: { x: number; y: number; r: number; opacity: number; speed: number; phase: number }[] = [];
+    const starCount = Math.floor((canvas.width * canvas.height) / 4000);
+    for (let i = 0; i < starCount; i++) {
+      stars.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        r: Math.random() * 1.5 + 0.3,
+        opacity: Math.random() * 0.6 + 0.2,
+        speed: Math.random() * 0.001 + 0.0002,
+        phase: Math.random() * Math.PI * 2,
+      });
+    }
+
+    const animate = (time: number) => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      for (const star of stars) {
+        const twinkle = Math.sin(time * star.speed + star.phase) * 0.3 + 0.7;
+        ctx.beginPath();
+        ctx.arc(star.x, star.y, star.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(255,255,255,${star.opacity * twinkle})`;
+        ctx.fill();
+      }
+      animationId = requestAnimationFrame(animate);
+    };
+    animationId = requestAnimationFrame(animate);
+
+    return () => {
+      cancelAnimationFrame(animationId);
+      window.removeEventListener('resize', resize);
+    };
+  }, []);
+
+  return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none" style={{ zIndex: 0 }} />;
+}
+
+// ===== AD MODAL =====
+interface AdModalProps {
+  ad: any;
+  timeRemaining: number;
+}
+
+function AdModal({ ad, timeRemaining }: AdModalProps) {
+  const seconds = Math.ceil(timeRemaining / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  const timeStr = `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
   return (
-    <div className="w-full h-[6px] rounded-full bg-white/10 overflow-hidden">
-      <div
-        className="h-full rounded-full transition-all duration-700 ease-out"
-        style={{
-          width: `${Math.min(value, 100)}%`,
-          backgroundColor: color,
-        }}
-      />
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4">
+      <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 rounded-2xl max-w-sm w-full shadow-2xl border border-white/5 overflow-hidden">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-600 to-blue-500 text-white px-4 py-1.5 rounded-full text-sm font-bold z-10 shadow-lg">
+          {timeStr}
+        </div>
+        <div className="relative w-full aspect-square bg-gradient-to-br from-slate-800 to-slate-950 overflow-hidden">
+          {ad.image && (
+            <img src={ad.image} alt="Ad" className="w-full h-full object-cover"
+              onError={(e) => { (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400"%3E%3Crect fill="%231e293b" width="400" height="400"/%3E%3C/svg%3E'; }}
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+        </div>
+        <div className="p-5 space-y-4">
+          <div className="flex items-start gap-3">
+            {ad.icon && (
+              <img src={ad.icon} alt="Icon" className="w-14 h-14 rounded-full flex-shrink-0 border-2 border-blue-500/30 shadow-lg"
+                onError={(e) => { (e.target as HTMLImageElement).src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"%3E%3Ccircle fill="%233b82f6" cx="50" cy="50" r="50"/%3E%3C/svg%3E'; }}
+              />
+            )}
+            <div className="flex-1">
+              <h2 className="text-white font-bold text-lg leading-tight">{ad.title}</h2>
+            </div>
+          </div>
+          <p className="text-white/75 text-sm leading-relaxed">{ad.text}</p>
+          <div className="flex items-center justify-between pt-3 border-t border-white/10">
+            <span className="text-white/40 text-xs font-semibold">Ad</span>
+            <span className="text-white/40 text-xs font-semibold">ads by Monetag</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
+// ===== HISTÓRICO NO LOCALSTORAGE =====
+interface HistoryEntry {
+  timestamp: number;
+  impressions: number;
+  clicks: number;
+  revenue: number;
+  duration: number;
+  ymid: string;
+}
+
+function saveHistoryEntry(entry: HistoryEntry, gameType: string) {
+  try {
+    const key = `bot_session_history_${gameType}`;
+    const saved = localStorage.getItem(key);
+    const history: HistoryEntry[] = saved ? JSON.parse(saved) : [];
+    history.push(entry);
+    const trimmed = history.slice(-50);
+    localStorage.setItem(key, JSON.stringify(trimmed));
+  } catch {}
+}
+
+// ===== MAIN COMPONENT =====
 export default function GamePage({ gameType }: GamePageProps) {
-  const config = GAME_CONFIG[gameType];
+  const gameConfig = GAME_CONFIG[gameType];
 
+  const [impressions, setImpressions] = useState(0);
+  const [clicks, setClicks] = useState(0);
+  const [cycle, setCycle] = useState(0);
+  const [status, setStatus] = useState("Aguardando início...");
+  const [running, setRunning] = useState(false);
+  const [currentAd, setCurrentAd] = useState<any>(null);
+  const [timeRemaining, setTimeRemaining] = useState(0);
   const [sdkReady, setSdkReady] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [currentScreen, setCurrentScreen] = useState<"home" | "ad">("home");
-  const [lastYmid, setLastYmid] = useState<string | null>(null);
-  const [statusMessage, setStatusMessage] = useState("Inicializando...");
-  const [impressionCount, setImpressionCount] = useState(0);
-  const [clickCount, setClickCount] = useState(0);
-  const [showYmidDialog, setShowYmidDialog] = useState(false);
-  const [ymidInput, setYmidInput] = useState("");
-  const [ymidConfirmed, setYmidConfirmed] = useState(false);
-  const ymidInputRef = useRef<HTMLInputElement>(null);
-  const statsIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const telegramUserId = useMemo(() => getTelegramUserId(), []);
 
-  // Estado do ciclo de reset (vem do servidor)
+  // Countdown state
   const [cycleCompleted, setCycleCompleted] = useState(false);
   const [secondsUntilReset, setSecondsUntilReset] = useState(0);
-  const [resetAt, setResetAt] = useState<string | null>(null);
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // ===== eCPM OPTIMIZER =====
-  const ecpmOptimizerRef = useRef<ECPMOptimizer>(new ECPMOptimizer(gameType));
+  const abortRef = useRef(false);
+  const configRef = useRef(getConfig(gameType));
+  const optimizerRef = useRef(new ECPMOptimizer(gameType));
+  const sdkScriptRef = useRef<HTMLScriptElement | null>(null);
+  const sessionStartRef = useRef<number>(0);
 
-  // ===== AUTO-ABRIR ANÚNCIO =====
-  const autoAdStorageKey = `auto_ad.${gameType}`;
-  const [autoAdEnabled, setAutoAdEnabled] = useState<boolean>(() => {
+  // Revenue tracking
+  const [revenue, setRevenue] = useState<number>(() => {
     try {
-      return localStorage.getItem(`auto_ad.${gameType}`) === "1";
-    } catch {
-      return false;
-    }
+      const saved = JSON.parse(localStorage.getItem(`local_stats_${gameType}`) || '{}');
+      return saved.revenue || 0;
+    } catch { return 0; }
   });
-  const autoAdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Timestamp de quando o último anúncio TERMINOU (para o optimizer calcular)
-  const lastAdFinishRef = useRef<number>(0);
 
-  // Atualizar título da página com base no jogo
+  // Persistir stats locais
   useEffect(() => {
-    document.title = config.title;
-  }, [config.title]);
+    try {
+      localStorage.setItem(`local_stats_${gameType}`, JSON.stringify({
+        revenue,
+        impressions,
+        clicks,
+        updatedAt: Date.now(),
+      }));
+    } catch {}
+  }, [revenue, impressions, clicks, gameType]);
 
-  const fetchStats = useCallback((_userId: string) => {
-    // Postback já configurado na Monetag - stats gerenciados localmente
-  }, []);
+  // Atualizar título da página
+  useEffect(() => {
+    document.title = gameConfig.title;
+  }, [gameConfig.title]);
 
-  // Countdown local para o reset (decrementa a cada segundo)
+  // ===== COUNTDOWN =====
   useEffect(() => {
     if (countdownIntervalRef.current) {
       clearInterval(countdownIntervalRef.current);
@@ -408,20 +652,25 @@ export default function GamePage({ gameType }: GamePageProps) {
       countdownIntervalRef.current = setInterval(() => {
         setSecondsUntilReset(prev => {
           if (prev <= 1) {
-            // Reset expirou! Recarregar stats
             setCycleCompleted(false);
-            setImpressionCount(0);
-            setClickCount(0);
-            // Reset do optimizer também
-            ecpmOptimizerRef.current.reset();
+            setImpressions(0);
+            setClicks(0);
+            setRevenue(0);
+            setCycle(0);
+            optimizerRef.current.reset();
             if (countdownIntervalRef.current) {
               clearInterval(countdownIntervalRef.current);
               countdownIntervalRef.current = null;
             }
-            const uid = localStorage.getItem("user_id");
-            if (uid) setTimeout(() => fetchStats(uid), 1000);
+            try { localStorage.removeItem(`countdown_state_${gameType}`); } catch {}
             return 0;
           }
+          try {
+            localStorage.setItem(`countdown_state_${gameType}`, JSON.stringify({
+              secondsRemaining: prev - 1,
+              savedAt: Date.now(),
+            }));
+          } catch {}
           return prev - 1;
         });
       }, 1000);
@@ -433,666 +682,372 @@ export default function GamePage({ gameType }: GamePageProps) {
         countdownIntervalRef.current = null;
       }
     };
-  }, [cycleCompleted, secondsUntilReset, fetchStats]);
+  }, [cycleCompleted, secondsUntilReset, gameType]);
 
+  // Restaurar countdown do localStorage ao carregar
   useEffect(() => {
-    // 1) Tenta ler o ymid do próprio link (o app Flutter abre com ?ymid=XXXX).
-    const readYmidFromUrl = (): string | null => {
-      try {
-        const qs = new URLSearchParams(window.location.search);
-        const candidates = [
-          qs.get("ymid"),
-          qs.get("user_id"),
-          qs.get("u"),
-        ];
-        const hash = window.location.hash.replace(/^#/, "");
-        if (hash.includes("=")) {
-          const hs = new URLSearchParams(hash);
-          candidates.push(hs.get("ymid"), hs.get("user_id"), hs.get("u"));
+    try {
+      const saved = localStorage.getItem(`countdown_state_${gameType}`);
+      if (saved) {
+        const state = JSON.parse(saved);
+        const elapsed = Math.floor((Date.now() - state.savedAt) / 1000);
+        const remaining = Math.max(0, state.secondsRemaining - elapsed);
+        if (remaining > 0) {
+          setCycleCompleted(true);
+          setSecondsUntilReset(remaining);
+        } else {
+          localStorage.removeItem(`countdown_state_${gameType}`);
         }
-        for (const v of candidates) {
-          if (v && v.trim() !== "") return v.trim();
-        }
-      } catch {}
-      return null;
-    };
+      }
+    } catch {}
+  }, [gameType]);
 
-    const urlYmid = readYmidFromUrl();
-    if (urlYmid) {
-      getOrCreateStoredIdentity(urlYmid);
-      setYmidInput(urlYmid);
-      setYmidConfirmed(true);
-      setShowYmidDialog(false);
-      return;
-    }
-
-    // 2) Sem ymid na URL: tenta recuperar do localStorage (visita anterior).
-    const savedYmid = localStorage.getItem("user_id");
-    if (savedYmid && savedYmid.trim() !== "") {
-      setYmidConfirmed(true);
-      setYmidInput(savedYmid);
-      return;
-    }
-
-    // 3) Sem ymid em lugar nenhum: pede ao usuário (fallback manual).
-    setShowYmidDialog(true);
-  }, []);
-
+  // ===== SDK LOADING =====
   useEffect(() => {
-    if (!ymidConfirmed) return;
-    window.Telegram?.WebApp?.ready?.();
-    const storedIdentity = getOrCreateStoredIdentity();
-    setLastYmid(storedIdentity.userId);
-    fetchStats(storedIdentity.userId);
-    if (statsIntervalRef.current) clearInterval(statsIntervalRef.current);
-    statsIntervalRef.current = setInterval(() => fetchStats(storedIdentity.userId), 5000);
+    installOaidSniffer();
 
-    if (typeof window[config.sdkGlobal] === "function") {
+    if (typeof (window as any)[gameConfig.sdkGlobal] === 'function') {
       setSdkReady(true);
-      setStatusMessage("Pronto");
       return;
     }
-    const script = document.createElement("script");
-    script.src = "//libtl.com/sdk.js";
-    script.setAttribute("data-zone", config.zoneId);
-    script.setAttribute("data-sdk", config.sdkGlobal);
-    script.setAttribute("data-game-type", gameType);
+
+    const script = document.createElement('script');
+    script.src = '//libtl.com/sdk.js';
+    script.setAttribute('data-zone', gameConfig.zoneId);
+    script.setAttribute('data-sdk', gameConfig.sdkGlobal);
+    script.setAttribute('data-game-type', gameConfig.source);
     script.async = true;
+
     script.onload = () => {
       let checks = 0;
-      const iv = setInterval(() => {
+      const interval = setInterval(() => {
         checks++;
-        if (window[config.sdkGlobal]) {
-          clearInterval(iv);
+        if ((window as any)[gameConfig.sdkGlobal]) {
+          clearInterval(interval);
           setSdkReady(true);
-          setStatusMessage("Pronto");
+          console.log(`[SDK][${gameType}] libtl.com/sdk.js carregado`);
         } else if (checks > 30) {
-          clearInterval(iv);
-          setStatusMessage("Timeout. Recarregue.");
+          clearInterval(interval);
+          console.warn(`[SDK][${gameType}] Timeout`);
         }
       }, 500);
     };
-    script.onerror = () => setStatusMessage("Erro de conexão");
-    document.head.appendChild(script);
-    return () => {
-      if (statsIntervalRef.current) clearInterval(statsIntervalRef.current);
-      script.remove();
+
+    script.onerror = () => {
+      console.error(`[SDK][${gameType}] Erro ao carregar`);
     };
-  }, [ymidConfirmed, fetchStats, config.sdkGlobal, config.zoneId]);
 
-  const handleYmidConfirm = () => {
-    const trimmed = ymidInput.trim();
-    if (!trimmed) return;
-    getOrCreateStoredIdentity(trimmed);
-    setLastYmid(trimmed);
-    setYmidConfirmed(true);
-    setShowYmidDialog(false);
-  };
+    document.head.appendChild(script);
+    sdkScriptRef.current = script;
 
-  // Alterna o switch e persiste a preferência.
-  const handleToggleAutoAd = useCallback((checked: boolean) => {
-    setAutoAdEnabled(checked);
-    try {
-      localStorage.setItem(autoAdStorageKey, checked ? "1" : "0");
-    } catch {}
-    if (!checked && autoAdTimerRef.current) {
-      clearTimeout(autoAdTimerRef.current);
-      autoAdTimerRef.current = null;
-    }
-  }, [autoAdStorageKey]);
+    return () => {
+      if (sdkScriptRef.current) {
+        sdkScriptRef.current.remove();
+      }
+    };
+  }, [gameConfig.sdkGlobal, gameConfig.zoneId, gameConfig.source, gameType]);
 
-  const handleShowAd = async () => {
-    if (loading) return;
-    // Bloquear se ciclo está completo (em cooldown)
+  const addLog = useCallback((msg: string) => {
+    const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    console.log(`[MONETAG][${gameType}] [${time}] ${msg}`);
+  }, [gameType]);
+
+  // ===== AUTOMAÇÃO PRINCIPAL =====
+  const startAutomation = useCallback(() => {
+    if (running) return;
     if (cycleCompleted && secondsUntilReset > 0) {
-      setStatusMessage(`Aguarde o reset (${formatTimeRemaining(secondsUntilReset)})`);
+      addLog(`Aguarde o reset (${formatTimeRemaining(secondsUntilReset)})`);
       return;
     }
-    const showAd = window[config.sdkGlobal];
-    if (typeof showAd !== "function") {
-      setStatusMessage("Aguarde...");
-      return;
-    }
+    setRunning(true);
+    abortRef.current = false;
+    sessionStartRef.current = Date.now();
 
-    // Verificar se o optimizer permite mostrar agora
-    if (!ecpmOptimizerRef.current.canShowAd()) {
-      console.log(`[eCPM][${gameType}] Optimizer bloqueou — cooldown mínimo não atingido`);
-      return;
-    }
+    const config = configRef.current;
+    const timings = generateSessionTimings();
 
-    const userId = localStorage.getItem("user_id") || "";
-    const userEmail = localStorage.getItem("user_email") || "";
-    const adStartTime = Date.now();
-    setLoading(true);
-    setCurrentScreen("ad");
-    setStatusMessage("Carregando...");
-    console.log("[SCREEN] Tela: ad (assistindo anúncio)");
-    try {
-      await new Promise<void>((resolve, reject) => {
-        let adDone = false;
-        let completedFully = false;
-        const adTimeout = setTimeout(() => { if (!adDone) { adDone = true; reject(new Error("Timeout")); } }, 120000);
-        const onCompleted = () => {
-          if (adDone) return;
-          adDone = true;
-          completedFully = true;
-          clearTimeout(adTimeout);
+    addLog(`Config: ymid=${config.ymid}`);
+    addLog(`[SDK] Status: ${sdkReady ? 'Pronto' : 'Não carregado'}`);
+    setStatus("Rodando...");
 
-          setTimeout(() => { const uid = localStorage.getItem("user_id"); if (uid) fetchStats(uid); }, 500);
-          resolve();
-        };
-        const onClosed = () => {
-          if (adDone) return;
-          adDone = true;
-          clearTimeout(adTimeout);
-          resolve();
-        };
-        try {
-          const sdkResult = showAd({ ymid: userId, requestVar: userEmail, onComplete: onCompleted, onClose: onClosed });
-          if (sdkResult && typeof sdkResult.then === "function") {
-            sdkResult
-              .then(() => {
-                if (!adDone) {
-                  adDone = true;
-                  clearTimeout(adTimeout);
-                  resolve();
-                }
-              })
-              .catch((err: any) => {
-                if (!adDone) {
-                  adDone = true;
-                  clearTimeout(adTimeout);
-                  reject(err);
-                }
-              });
-          }
-        } catch {
+    const runLoop = async () => {
+      let cycleNum = 0;
+      let totalImpressions = impressions;
+      let totalClicks = clicks;
+      const optimizer = optimizerRef.current;
+      optimizer.reset();
+
+      while (!abortRef.current) {
+        if (totalImpressions >= MAX_IMPRESSIONS && totalClicks >= MAX_CLICKS) {
+          addLog("METAS ATINGIDAS!");
+          setStatus("Concluído! Countdown iniciado.");
+
+          const sessionDuration = Date.now() - sessionStartRef.current;
+          saveHistoryEntry({
+            timestamp: Date.now(),
+            impressions: totalImpressions,
+            clicks: totalClicks,
+            revenue,
+            duration: sessionDuration,
+            ymid: config.ymid,
+          }, gameType);
+
+          setCycleCompleted(true);
+          setSecondsUntilReset(gameConfig.resetSeconds);
           try {
-            showAd()
-              .then(() => {
-                if (!adDone) {
-                  adDone = true;
-                  clearTimeout(adTimeout);
-                  resolve();
-                }
-              })
-              .catch((err: any) => {
-                if (!adDone) {
-                  adDone = true;
-                  clearTimeout(adTimeout);
-                  reject(err);
-                }
-              });
-          } catch (e2) {
-            if (!adDone) {
-              adDone = true;
-              clearTimeout(adTimeout);
-              reject(e2);
+            localStorage.setItem(`countdown_state_${gameType}`, JSON.stringify({
+              secondsRemaining: gameConfig.resetSeconds,
+              savedAt: Date.now(),
+            }));
+          } catch {}
+
+          break;
+        }
+
+        cycleNum++;
+        setCycle(cycleNum);
+
+        let delay = timings.delayBetweenCyclesMin + Math.random() * (timings.delayBetweenCyclesMax - timings.delayBetweenCyclesMin);
+
+        if (Math.random() < timings.pauseChance && cycleNum > 1) {
+          const pauseTime = timings.pauseDuration * (0.7 + Math.random() * 0.6);
+          addLog(`[PAUSA] Distração simulada (${Math.round(pauseTime / 1000)}s)...`);
+          setStatus(`Ciclo #${cycleNum} - Pausa...`);
+          await humanDelay(pauseTime * 0.9, pauseTime * 1.1);
+          if (abortRef.current) break;
+        }
+
+        if (totalImpressions >= MAX_IMPRESSIONS && totalClicks < MAX_CLICKS) {
+          delay = 3000 + Math.random() * 3000;
+        }
+
+        const delaySeconds = Math.round(delay / 1000);
+        addLog(`-- Ciclo #${cycleNum} -- (delay: ${delaySeconds}s)`);
+        setStatus(`Ciclo #${cycleNum} - Aguardando (${delaySeconds}s)...`);
+        await humanDelay(delay * 0.95, delay * 1.05);
+        if (abortRef.current) break;
+
+        setStatus(`Ciclo #${cycleNum} - Buscando anúncio...`);
+        addLog("[1] Buscando anúncio via API...");
+
+        let adData: any;
+        try {
+          adData = await fetchAds(config);
+        } catch (err: any) {
+          addLog(`[ERRO] Fetch ads falhou: ${err.message}`);
+          optimizer.recordAdResult(false, 0);
+          continue;
+        }
+        if (!adData || !adData.ads || adData.ads.length === 0) {
+          addLog("[!] Sem ads disponíveis");
+          optimizer.recordAdResult(false, 0);
+          continue;
+        }
+
+        const ad = adData.ads[0];
+        const ruid = adData.ruid || '';
+        const impressionUrl = ad.impression_url || '';
+        const clickUrl = ad.click || '';
+
+        addLog(`[2] Ad: banner_id=${ad.banner_id}`);
+
+        // === IMPRESSÃO HUMANIZADA ===
+        if (totalImpressions < MAX_IMPRESSIONS && impressionUrl) {
+          const viewTime = timings.viewTimeBase + (Math.random() - 0.5) * timings.viewTimeVariance;
+
+          addLog(`[3] Assistindo anúncio (${Math.round(viewTime / 1000)}s)...`);
+          setStatus(`Ciclo #${cycleNum} - Assistindo anúncio...`);
+          setCurrentAd(ad);
+
+          try {
+            await fetch(impressionUrl, { method: 'GET', mode: 'no-cors' }).catch(() => {});
+          } catch {}
+
+          let elapsed = 0;
+          const timerInterval = setInterval(() => {
+            elapsed += 100;
+            setTimeRemaining(Math.max(0, viewTime - elapsed));
+            if (elapsed >= viewTime) {
+              clearInterval(timerInterval);
+              setCurrentAd(null);
             }
+          }, 100);
+
+          await humanDelay(viewTime * 0.98, viewTime * 1.02);
+          clearInterval(timerInterval);
+          setCurrentAd(null);
+
+          totalImpressions++;
+          setImpressions(totalImpressions);
+          optimizer.recordAdResult(true, viewTime);
+
+          addLog(`[5] Impression #${totalImpressions}/${MAX_IMPRESSIONS} completa!`);
+        }
+
+        // === RESOLVE COM TRACKING ===
+        if (ruid) {
+          const resolveWait = timings.resolveDelayMin + Math.random() * (timings.resolveDelayMax - timings.resolveDelayMin);
+          addLog(`[6] Resolvendo ruid...`);
+          await humanDelay(resolveWait * 0.9, resolveWait * 1.1);
+
+          const resolveData = await resolveRuid(ruid);
+          if (resolveData) {
+            const price = resolveData.estimated_price;
+            if (typeof price === 'number' && price > 0) {
+              setRevenue(prev => prev + price);
+              addLog(`[6] Resolve OK — $${price.toFixed(6)}`);
+            } else {
+              setRevenue(prev => prev + 0.055);
+              addLog(`[6] Resolve OK (estimado: $0.055)`);
+            }
+          } else {
+            setRevenue(prev => prev + 0.045);
+            addLog(`[6] Resolve sem dados (fallback: $0.045)`);
           }
         }
-        void completedFully;
-      });
-      // SUCESSO — registrar no optimizer
-      const adDuration = Date.now() - adStartTime;
-      ecpmOptimizerRef.current.recordAdResult(true, adDuration);
-      lastAdFinishRef.current = Date.now();
-      setStatusMessage("Pronto");
-    } catch {
-      // FALHA — registrar no optimizer (vai aumentar o cooldown)
-      const adDuration = Date.now() - adStartTime;
-      ecpmOptimizerRef.current.recordAdResult(false, adDuration);
-      lastAdFinishRef.current = Date.now();
-      setStatusMessage("Erro. Tente novamente.");
-    } finally {
-      setLoading(false);
-      setCurrentScreen("home");
-      console.log("[SCREEN] Tela: home");
-    }
-  };
 
-  const impressionPercent = Math.min((impressionCount / MAX_IMPRESSIONS) * 100, 100);
-  const clickPercent = Math.min((clickCount / MAX_CLICKS) * 100, 100);
+        // === CLIQUE HUMANIZADO ===
+        const shouldClick =
+          clickUrl &&
+          totalClicks < MAX_CLICKS &&
+          (timings.clickCycles.includes(cycleNum) || (totalImpressions >= MAX_IMPRESSIONS && totalClicks < MAX_CLICKS));
 
-  const clicksCompleted = clickCount >= MAX_CLICKS;
-  const impressionsCompleted = impressionCount >= MAX_IMPRESSIONS;
-  const allTasksCompleted = impressionsCompleted && clicksCompleted;
+        if (shouldClick) {
+          const hesitation = timings.clickDelayMin + Math.random() * (timings.clickDelayMax - timings.clickDelayMin);
+          addLog(`[7] Hesitando antes de clicar (${Math.round(hesitation / 1000)}s)...`);
+          await humanDelay(hesitation * 0.9, hesitation * 1.1);
+          if (abortRef.current) break;
 
-  // ===== AUTO-ABRIR ANÚNCIO COM eCPM OPTIMIZER =====
-  // Usa o optimizer para calcular o timing ideal entre anúncios
-  useEffect(() => {
-    if (autoAdTimerRef.current) {
-      clearTimeout(autoAdTimerRef.current);
-      autoAdTimerRef.current = null;
-    }
+          addLog(`[7] Abrindo CLICK em nova guia...`);
+          setStatus(`Ciclo #${cycleNum} - Clicando...`);
+          const clickTab = window.open(clickUrl, '_blank');
 
-    if (!autoAdEnabled) return;
-    if (!clicksCompleted) return;
-    if (!sdkReady) return;
-    if (!ymidConfirmed) return;
-    if (loading) return;
-    if (currentScreen !== "home") return;
-    if (allTasksCompleted) return;
-    if (cycleCompleted && secondsUntilReset > 0) return;
+          const landingTime = 30000 + Math.random() * 30000;
+          addLog(`[8] Na landing page... (${Math.round(landingTime / 1000)}s)`);
+          await humanDelay(landingTime * 0.95, landingTime * 1.05);
 
-    // Pedir ao optimizer o cooldown ideal
-    const optimalCooldown = ecpmOptimizerRef.current.getNextCooldown();
+          try { if (clickTab && !clickTab.closed) clickTab.close(); } catch {}
 
-    // Calcular quanto tempo já passou desde o último anúncio
-    const timeSinceLastAd = lastAdFinishRef.current > 0 ? Date.now() - lastAdFinishRef.current : Infinity;
+          totalClicks++;
+          setClicks(totalClicks);
 
-    // Se já passou tempo suficiente, usar um delay mínimo; senão, esperar a diferença
-    const wait = timeSinceLastAd >= optimalCooldown
-      ? Math.max(1500, Math.random() * 2000) // Já pode, mas espera 1.5-3.5s para não ser instantâneo
-      : Math.max(1500, optimalCooldown - timeSinceLastAd);
+          addLog(`[9] Click #${totalClicks}/${MAX_CLICKS} completo!`);
 
-    console.log(`[eCPM][${gameType}] Auto-ad agendado em ${Math.round(wait)}ms ` +
-      `(cooldown ideal: ${optimalCooldown}ms, desde último: ${Math.round(timeSinceLastAd)}ms)`);
+          const postClickPause = 3000 + Math.random() * 5000;
+          await humanDelay(postClickPause * 0.9, postClickPause * 1.1);
+        }
 
-    autoAdTimerRef.current = setTimeout(() => {
-      autoAdTimerRef.current = null;
-      // Revalidação no momento do disparo
-      if (!autoAdEnabled) return;
-      if (loading) return;
-      if (allTasksCompleted) return;
-      if (cycleCompleted && secondsUntilReset > 0) return;
-      console.log(`[AUTO-AD][${gameType}] Disparando anúncio automaticamente (eCPM optimized)`);
-      handleShowAd();
-    }, wait);
-
-    return () => {
-      if (autoAdTimerRef.current) {
-        clearTimeout(autoAdTimerRef.current);
-        autoAdTimerRef.current = null;
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [
-    autoAdEnabled,
-    clicksCompleted,
-    sdkReady,
-    ymidConfirmed,
-    loading,
-    currentScreen,
-    allTasksCompleted,
-    cycleCompleted,
-    secondsUntilReset > 0,
-    gameType,
-  ]);
-
-  // Listener para o countdown do overlay - volta para home quando timer zera
-  useEffect(() => {
-    const handleCountdownDone = () => {
-      console.log('[COUNTDOWN] Evento recebido - setando currentScreen para home');
-      setLoading(false);
-      setCurrentScreen('home');
-      setStatusMessage('Pronto');
-    };
-    window.addEventListener('overlay-countdown-done', handleCountdownDone);
-    return () => window.removeEventListener('overlay-countdown-done', handleCountdownDone);
-  }, []);
-
-  // ===== OVERLAY DE CLICK LIMIT =====
-  const clickLimitReachedRef = useRef(false);
-  const countdownStartedRef = useRef(false);
-
-  // Effect 1: Criar overlay UMA VEZ quando clicks completam E tela é 'ad'
-  useEffect(() => {
-    const OVERLAY_ID = 'api-click-overlay';
-    const STYLE_ID = OVERLAY_ID + '_style';
-
-    if (!clicksCompleted) return;
-    clickLimitReachedRef.current = true;
-
-    // Se NÃO está na tela de anúncio, esconder overlay
-    if (currentScreen !== 'ad') {
-      const existingOverlay = document.getElementById(OVERLAY_ID);
-      if (existingOverlay) existingOverlay.style.display = 'none';
-      countdownStartedRef.current = false;
-      return;
-    }
-
-    // Se overlay já existe, apenas mostrar (NÃO recriar)
-    const existingOverlay = document.getElementById(OVERLAY_ID);
-    if (existingOverlay) {
-      existingOverlay.style.display = 'flex';
-      if (!countdownStartedRef.current) {
-        startCountdown(OVERLAY_ID);
-      }
-      return;
-    }
-
-    console.log('[OVERLAY] Criando overlay de progresso...');
-
-    const overlay = document.createElement('div');
-    overlay.id = OVERLAY_ID;
-    overlay.style.cssText = 'position:fixed !important;top:0 !important;left:0 !important;width:100vw !important;height:100vh !important;background:rgba(0,0,0,0.5) !important;backdrop-filter:blur(20px) !important;-webkit-backdrop-filter:blur(20px) !important;z-index:2147483647 !important;display:flex !important;align-items:center !important;justify-content:center !important;pointer-events:auto !important;overflow-y:auto !important;padding:20px 0 !important;';
-
-    ['click','mousedown','mouseup','touchstart','touchend','touchmove','contextmenu','pointerdown','pointerup'].forEach(function(ev) {
-      overlay.addEventListener(ev, function(e: Event) {
-        const target = e.target as HTMLElement;
-        if (target.tagName === 'BUTTON') return;
-        e.stopPropagation(); e.stopImmediatePropagation(); e.preventDefault();
-      }, true);
-    });
-
-    const impPct = Math.min((impressionCount / MAX_IMPRESSIONS) * 100, 100);
-    const clkPct = Math.min((clickCount / MAX_CLICKS) * 100, 100);
-
-    const msg = document.createElement('div');
-    msg.style.cssText = 'background:transparent;padding:14px 18px;border-radius:14px;max-width:90%;width:340px;pointer-events:auto;border:1px solid rgba(255,255,255,0.25);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",system-ui,sans-serif;';
-    msg.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <div style="display:flex;align-items:center;gap:8px;">
-          <svg style="flex-shrink:0;display:block;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF9500" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-          <span style="font-size:14px;font-weight:500;color:rgba(255,255,255,0.85);line-height:18px;">Impress\u00f5es</span>
-        </div>
-        <span style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.9);white-space:nowrap;">
-          <span id="overlay-imp-count">${Math.min(impressionCount, MAX_IMPRESSIONS)}</span><span style="font-size:12px;color:rgba(255,255,255,0.4);"> / ${MAX_IMPRESSIONS}</span>
-        </span>
-      </div>
-      <div style="width:100%;height:5px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;">
-        <div id="overlay-imp-bar" style="height:100%;width:${impPct}%;background:#FF9500;border-radius:3px;transition:width 0.5s ease;"></div>
-      </div>
-      <div style="height:1px;background:rgba(255,255,255,0.1);margin:14px 0;"></div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
-        <div style="display:flex;align-items:center;gap:8px;">
-          <svg style="flex-shrink:0;display:block;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34C759" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5"/></svg>
-          <span style="font-size:14px;font-weight:500;color:rgba(255,255,255,0.85);line-height:18px;">Cliques</span>
-        </div>
-        <span style="font-size:14px;font-weight:600;color:rgba(255,255,255,0.9);white-space:nowrap;">
-          <span>${Math.min(clickCount, MAX_CLICKS)}</span><span style="font-size:12px;color:rgba(255,255,255,0.4);"> / ${MAX_CLICKS}</span>
-        </span>
-      </div>
-      <div style="width:100%;height:5px;background:rgba(255,255,255,0.08);border-radius:3px;overflow:hidden;">
-        <div style="height:100%;width:${clkPct}%;background:#34C759;border-radius:3px;"></div>
-      </div>
-      ${clickCount >= MAX_CLICKS ? '<p style="font-size:11px;color:#34C759;font-weight:500;margin:5px 0 0;">Meta conclu\u00edda</p>' : ''}
-      <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.1);text-align:center;">
-        <span style="font-size:12px;color:rgba(255,255,255,0.45);">Voltando em </span>
-        <span id="overlay-countdown" style="font-size:14px;font-weight:700;color:#007AFF;">20</span>
-        <span style="font-size:12px;color:rgba(255,255,255,0.45);">s</span>
-      </div>
-    `;
-
-    overlay.appendChild(msg);
-
-    if (!document.getElementById(STYLE_ID)) {
-      const style = document.createElement('style');
-      style.id = STYLE_ID;
-      style.textContent = `#${OVERLAY_ID} { position: fixed !important; z-index: 2147483647 !important; display: flex !important; top: 0 !important; left: 0 !important; width: 100vw !important; height: 100vh !important; }`;
-      document.head.appendChild(style);
-    }
-
-    document.documentElement.appendChild(overlay);
-
-    // Iniciar countdown
-    startCountdown(OVERLAY_ID);
-
-    // MutationObserver para manter overlay no topo
-    function keepOverlayOnTop() {
-      const el = document.getElementById(OVERLAY_ID);
-      if (!el) return;
-      if (el.parentNode !== document.documentElement || el !== document.documentElement.lastElementChild) {
-        document.documentElement.appendChild(el);
-      }
-      el.style.zIndex = '2147483647';
-      el.style.display = 'flex';
-      el.style.position = 'fixed';
-    }
-
-    const enforceInterval = setInterval(keepOverlayOnTop, 100);
-    const observer = new MutationObserver(() => keepOverlayOnTop());
-    observer.observe(document.documentElement, { childList: true, subtree: true });
-    observer.observe(document.body, { childList: true, subtree: true });
-
-    console.log('[OVERLAY] Overlay criado com countdown');
-
-    return () => {
-      observer.disconnect();
-      clearInterval(enforceInterval);
-    };
-  }, [clicksCompleted, currentScreen]);
-
-  // Effect 2: Atualizar contadores do overlay SEM recriar (separado do countdown)
-  useEffect(() => {
-    if (!clicksCompleted || currentScreen !== 'ad') return;
-    const overlay = document.getElementById('api-click-overlay');
-    if (!overlay) return;
-    const impEl = overlay.querySelector('#overlay-imp-count');
-    if (impEl) impEl.textContent = `${Math.min(impressionCount, MAX_IMPRESSIONS)}`;
-    const barEl = overlay.querySelector('#overlay-imp-bar') as HTMLElement;
-    if (barEl) barEl.style.width = `${Math.min((impressionCount / MAX_IMPRESSIONS) * 100, 100)}%`;
-  }, [impressionCount, clickCount, clicksCompleted, currentScreen]);
-
-  // Função countdown robusta baseada em timestamp absoluto (não afetada por re-renders)
-  function startCountdown(overlayId: string) {
-    if (countdownStartedRef.current) return; // Já está rodando, não duplicar
-    countdownStartedRef.current = true;
-
-    const COUNTDOWN_SECONDS = 20;
-    const endTime = Date.now() + COUNTDOWN_SECONDS * 1000;
-
-    console.log('[COUNTDOWN] Iniciando countdown de ' + COUNTDOWN_SECONDS + 's (timestamp-based)');
-
-    const tick = () => {
-      const remaining = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
-      const el = document.querySelector('#overlay-countdown');
-      if (el) el.textContent = String(remaining);
-
-      if (remaining <= 0) {
-        console.log('[COUNTDOWN] Timer zerou - voltando para ' + window.location.pathname);
-        const gameUrl = window.location.origin + window.location.pathname + window.location.search;
-        window.location.href = gameUrl;
-        return;
+        addLog(`Stats: ${totalImpressions}/${MAX_IMPRESSIONS} imp, ${totalClicks}/${MAX_CLICKS} clicks`);
+        setStatus(`Ciclo #${cycleNum} - Completo`);
       }
 
-      requestAnimationFrame(() => setTimeout(tick, 200));
+      addLog(`Loop finalizado após ${cycleNum} ciclos`);
+      setRunning(false);
     };
 
-    tick();
-  }
+    runLoop();
+
+    return () => { abortRef.current = true; };
+  }, [running, addLog, sdkReady, impressions, clicks, revenue, cycleCompleted, secondsUntilReset, gameType, gameConfig.resetSeconds]);
+
+  const stopAutomation = useCallback(() => {
+    abortRef.current = true;
+    setRunning(false);
+    addLog("Automação parada pelo usuário");
+    setStatus("Parado");
+  }, [addLog]);
+
+  const impressionPercent = Math.min((impressions / MAX_IMPRESSIONS) * 100, 100);
+  const clickPercent = Math.min((clicks / MAX_CLICKS) * 100, 100);
 
   return (
     <>
-      {/* Diálogo YMID — estilo iOS Alert */}
-      <Dialog open={showYmidDialog} onOpenChange={(open) => { if (!open && ymidConfirmed) setShowYmidDialog(false); }}>
-        <DialogContent
-          showCloseButton={ymidConfirmed}
-          className="bg-card rounded-2xl border-0 shadow-[0_8px_40px_rgba(0,0,0,0.12)] max-w-[320px]"
-        >
-          <DialogHeader>
-            <DialogTitle className="text-center text-[17px] font-semibold tracking-[-0.01em]">
-              Configurar YMID
-            </DialogTitle>
-            <DialogDescription className="text-center text-[13px] leading-[18px]">
-              Insira seu identificador para rastrear suas impressões e cliques.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="px-1 py-1">
-            <Input
-              ref={ymidInputRef}
-              id="ymid-input"
-              type="text"
-              placeholder="Seu YMID"
-              value={ymidInput}
-              onChange={(e) => setYmidInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleYmidConfirm(); }}
-              className="h-[36px] text-[15px] rounded-lg bg-white/[0.06] border-0 px-3 placeholder:text-white/30 focus-visible:ring-2 focus-visible:ring-primary/40"
-              autoFocus
-            />
-          </div>
-          <DialogFooter className="border-t border-border/60 pt-3 -mx-6 -mb-6 px-0 pb-0">
-            <button
-              onClick={handleYmidConfirm}
-              disabled={!ymidInput.trim()}
-              className="w-full py-3 text-[17px] font-semibold text-primary hover:bg-white/[0.05] active:bg-white/[0.08] transition-colors disabled:text-primary/30 disabled:cursor-not-allowed rounded-b-2xl"
-            >
-              OK
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <StarryBackground />
 
-      {/* Layout principal — fundo transparente (o fundo visível vem da WebView/app). */}
-      <div className="min-h-screen flex items-center justify-center relative" style={{ background: 'transparent' }}>
-        <div className="px-4 py-6 max-w-lg w-full space-y-6 relative" style={{ zIndex: 1 }}>
+      {currentAd && (
+        <AdModal ad={currentAd} timeRemaining={timeRemaining} />
+      )}
 
-
-          {/* Card de Progresso — iOS grouped card */}
-          <div className="rounded-xl bg-card shadow-[0_0_1px_rgba(0,0,0,0.04),0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden">
-
-            {/* Impressões row */}
-            <div className="px-4 pt-4 pb-3.5">
-              <div className="flex items-center justify-between mb-2.5">
-                <div className="flex items-center gap-3">
-                  <svg className="flex-shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#FF9500" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                    <circle cx="12" cy="12" r="3" />
-                  </svg>
-                  <span className="text-[15px] font-medium text-foreground">Impressões</span>
-                </div>
-                <span className="text-[15px] tabular-nums text-muted-foreground">
-                  <span className="font-semibold text-foreground">{Math.min(impressionCount, MAX_IMPRESSIONS)}</span>
-                  <span className="text-[13px]"> / {MAX_IMPRESSIONS}</span>
-                </span>
-              </div>
-              <IOSProgressBar value={impressionPercent} color="#FF9500" />
-              {impressionCount >= MAX_IMPRESSIONS && (
-                <p className="text-[12px] text-[#34C759] font-medium mt-1.5">Meta concluída</p>
-              )}
+      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-4">
+        <div className="w-full max-w-md space-y-3">
+          {/* Impressões */}
+          <div className="flex items-center gap-3 px-4 py-3">
+            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FF9500" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
             </div>
-
-            {/* iOS separator */}
-            <div className="h-px bg-white/[0.08]" />
-
-            {/* Cliques row */}
-            <div className="px-4 pt-3.5 pb-4">
-              <div className="flex items-center justify-between mb-2.5">
-                <div className="flex items-center gap-3">
-                  <svg className="flex-shrink-0" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#34C759" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5" />
-                  </svg>
-                  <span className="text-[15px] font-medium text-foreground">Cliques</span>
-                </div>
-                <span className="text-[15px] tabular-nums text-muted-foreground">
-                  <span className="font-semibold text-foreground">{Math.min(clickCount, MAX_CLICKS)}</span>
-                  <span className="text-[13px]"> / {MAX_CLICKS}</span>
-                </span>
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-white/90 text-sm font-medium">Impressões</span>
+                <span className="text-white font-bold text-sm">{impressions} <span className="text-white/40 font-normal">/ {MAX_IMPRESSIONS}</span></span>
               </div>
-              <IOSProgressBar value={clickPercent} color="#34C759" />
-              {clickCount >= MAX_CLICKS && (
-                <p className="text-[12px] text-[#34C759] font-medium mt-1.5">Meta concluída</p>
-              )}
-            </div>
-          </div>
-
-          {/* Botão principal — iOS style. Oculto quando ciclo completo ou tarefas concluídas */}
-          {!allTasksCompleted && !(cycleCompleted && secondsUntilReset > 0) && (
-            <button
-              onClick={handleShowAd}
-              disabled={loading || !sdkReady || !ymidConfirmed}
-              className="w-full h-[50px] rounded-xl text-[17px] font-semibold text-white transition-all duration-150 active:scale-[0.98] active:opacity-90 disabled:opacity-40 disabled:active:scale-100 flex items-center justify-center gap-2"
-              style={{ backgroundColor: "#007AFF" }}
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span>Carregando...</span>
-                </>
-              ) : (
-                <span>Assistir Anúncio</span>
-              )}
-            </button>
-          )}
-
-
-          {/* Seção de conta — iOS grouped card */}
-          <div>
-            <p className="text-[13px] font-normal text-muted-foreground uppercase tracking-wide px-4 mb-[6px]">
-              Conta
-            </p>
-            <div className="rounded-xl bg-card shadow-[0_0_1px_rgba(0,0,0,0.04),0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden">
-              {/* YMID row — somente leitura */}
-              <div className="flex items-center justify-between px-4 py-[11px]">
-                <span className="text-[15px] text-foreground">YMID</span>
-                <span className="text-[15px] text-muted-foreground truncate max-w-[160px]">
-                  {lastYmid ?? "Não definido"}
-                </span>
-              </div>
-
-              {/* Separator */}
-              <div className="h-px bg-white/[0.08] ml-4" />
-
-              {/* Status row */}
-              <div className="flex items-center justify-between px-4 py-[11px]">
-                <span className="text-[15px] text-foreground">Anúncio</span>
-                <div className="flex items-center gap-1.5">
-                  {!sdkReady ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 text-[#FF9500] animate-spin" />
-                      <span className="text-[15px] text-[#FF9500]">Carregando...</span>
-                    </>
-                  ) : (
-                    <>
-                      <div className="w-2 h-2 rounded-full bg-[#34C759]" />
-                      <span className="text-[15px] text-[#34C759]">Pronto</span>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Separator */}
-              <div className="h-px bg-white/[0.08] ml-4" />
-
-              {/* Jogo row — identifica qual jogo está ativo */}
-              <div className="flex items-center justify-between px-4 py-[11px]">
-                <span className="text-[15px] text-foreground">Jogo</span>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[15px] text-muted-foreground">{config.label}</span>
-                </div>
-              </div>
-
-              {/* Separator */}
-              <div className="h-px bg-white/[0.08] ml-4" />
-
-              {/* Reset info row */}
-              <div className="flex items-center justify-between px-4 py-[11px]">
-                <span className="text-[15px] text-foreground">Reset</span>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[15px] text-muted-foreground">
-                    {cycleCompleted ? formatTimeRemaining(secondsUntilReset) : `A cada ${config.resetLabel}`}
-                  </span>
-                </div>
-              </div>
-
-              {/* Separator */}
-              <div className="h-px bg-white/[0.08] ml-4" />
-
-              {/* Auto Abrir Anúncio */}
-              <div className="flex items-center justify-between px-4 py-[11px]">
-                <div className="flex flex-col pr-3">
-                  <span className={`text-[15px] ${clicksCompleted ? "text-foreground" : "text-foreground/40"}`}>
-                    Abrir anúncio automaticamente
-                  </span>
-                  <span className="text-[12px] text-muted-foreground mt-0.5">
-                    {!clicksCompleted
-                      ? `Liberado após ${MAX_CLICKS} cliques (${Math.min(clickCount, MAX_CLICKS)}/${MAX_CLICKS})`
-                      : autoAdEnabled
-                        ? "Ativado — eCPM otimizado automaticamente"
-                        : "Desativado — abra manualmente no botão"}
-                  </span>
-                </div>
-                <Switch
-                  checked={autoAdEnabled && clicksCompleted}
-                  onCheckedChange={handleToggleAutoAd}
-                  disabled={!clicksCompleted}
-                  aria-label="Abrir anúncio automaticamente"
-                />
+              <div className="w-full h-[6px] rounded-full bg-white/10 overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-700 ease-out" style={{ width: `${impressionPercent}%`, backgroundColor: '#FF9500' }} />
               </div>
             </div>
           </div>
 
+          {/* Cliques */}
+          <div className="flex items-center gap-3 px-4 py-3">
+            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#34C759" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 4l7.07 17 2.51-7.39L21 11.07z"/>
+              </svg>
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-white/90 text-sm font-medium">Cliques</span>
+                <span className="text-white font-bold text-sm">{clicks} <span className="text-white/40 font-normal">/ {MAX_CLICKS}</span></span>
+              </div>
+              <div className="w-full h-[6px] rounded-full bg-white/10 overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-700 ease-out" style={{ width: `${clickPercent}%`, backgroundColor: '#34C759' }} />
+              </div>
+            </div>
+          </div>
+
+          {/* Botão Assistir Anúncio / Parar */}
+          <div className="px-4 pt-4">
+            {!running ? (
+              <button
+                onClick={startAutomation}
+                disabled={cycleCompleted && secondsUntilReset > 0}
+                className="w-full h-[50px] rounded-xl bg-[#007AFF] hover:bg-[#0066DD] active:scale-[0.97] disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-base italic transition-all duration-150 shadow-lg"
+              >
+                Assistir Anúncio
+              </button>
+            ) : (
+              <button
+                onClick={stopAutomation}
+                className="w-full h-[50px] rounded-xl bg-red-600 hover:bg-red-700 active:scale-[0.97] text-white font-semibold text-base transition-all duration-150 shadow-lg"
+              >
+                Parar
+              </button>
+            )}
+          </div>
+
+          {/* Painel Status */}
+          <div className="mx-4 mt-4 bg-white/[0.04] backdrop-blur-xl rounded-xl p-4 border border-white/10">
+            <div className="flex items-center justify-between">
+              <span className="text-white/60 text-sm">Status</span>
+              <span className="text-white/90 text-sm font-medium">{status}</span>
+            </div>
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-white/60 text-sm">Ciclo</span>
+              <span className="text-white/90 text-sm font-medium">#{cycle}</span>
+            </div>
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-white/60 text-sm">YMID</span>
+              <span className="text-white/90 text-sm font-medium truncate max-w-[180px]">{configRef.current.ymid}</span>
+            </div>
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-white/60 text-sm">Reset</span>
+              <span className="text-white/90 text-sm font-medium">
+                {cycleCompleted ? formatTimeRemaining(secondsUntilReset) : `A cada ${gameConfig.resetLabel}`}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </>
