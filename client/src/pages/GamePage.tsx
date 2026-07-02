@@ -234,7 +234,7 @@ class ECPMOptimizer {
 }
 
 // ===== CONFIGURAÇÃO POR JOGO =====
-const POSTBACK_SERVER_BASE_URL = "https://monetag-postback-server-production.up.railway.app";
+
 
 const GAME_CONFIG: Record<
   GameType,
@@ -244,8 +244,7 @@ const GAME_CONFIG: Record<
     title: string;
     zoneId: string;
     sdkGlobal: string;
-    postbackUrl: string;
-    statsUserUrl: string;
+
     source: "roulette" | "candy" | "scratch";
     resetLabel: string;
   }
@@ -256,8 +255,7 @@ const GAME_CONFIG: Record<
     title: "Roleta - Ganhe Recompensas",
     zoneId: "11158500",
     sdkGlobal: "show_11158500",
-    postbackUrl: `${POSTBACK_SERVER_BASE_URL}/api/postback/spin`,
-    statsUserUrl: `${POSTBACK_SERVER_BASE_URL}/api/stats/spin/user/`,
+
     source: "roulette",
     resetLabel: "1 hora",
   },
@@ -267,8 +265,7 @@ const GAME_CONFIG: Record<
     title: "Candy - Ganhe Recompensas",
     zoneId: "11158509",
     sdkGlobal: "show_11158509",
-    postbackUrl: `${POSTBACK_SERVER_BASE_URL}/api/postback/candy`,
-    statsUserUrl: `${POSTBACK_SERVER_BASE_URL}/api/stats/candy/user/`,
+
     source: "candy",
     resetLabel: "1 hora",
   },
@@ -278,8 +275,7 @@ const GAME_CONFIG: Record<
     title: "Raspadinha - Ganhe Recompensas",
     zoneId: "11158518",
     sdkGlobal: "show_11158518",
-    postbackUrl: `${POSTBACK_SERVER_BASE_URL}/api/postback/scratch`,
-    statsUserUrl: `${POSTBACK_SERVER_BASE_URL}/api/stats/scratch/user/`,
+
     source: "scratch",
     resetLabel: "3 horas",
   },
@@ -288,8 +284,7 @@ const GAME_CONFIG: Record<
 const MAX_IMPRESSIONS = 20;
 const MAX_CLICKS = 2;
 
-let __lastPostbackTime = 0;
-let __lastPostbackKey = "";
+
 
 declare global {
   interface Window {
@@ -328,35 +323,7 @@ const getOrCreateStoredIdentity = (customYmid?: string) => {
   return { userId: generatedUserId, userEmail: generatedUserEmail };
 };
 
-function sendPostback(
-  gameConfig: (typeof GAME_CONFIG)[GameType],
-  eventType: "impression" | "click"
-) {
-  const now = Date.now();
-  const dedupeKey = `${gameConfig.source}:${eventType}`;
-  if (now - __lastPostbackTime < 25000 && __lastPostbackKey === dedupeKey) {
-    console.log(`[POSTBACK][${gameConfig.source}] Ignorando ${eventType} - duplicado`);
-    return;
-  }
-  __lastPostbackTime = now;
-  __lastPostbackKey = dedupeKey;
-  const userId = localStorage.getItem("user_id") || "";
-  const userEmail = localStorage.getItem("user_email") || "";
-  const price = eventType === "click" ? "0.0045" : "0.0023";
-  const params = new URLSearchParams({
-    event_type: eventType,
-    zone_id: gameConfig.zoneId,
-    ymid: userId,
-    user_email: userEmail,
-    estimated_price: price,
-    source: gameConfig.source,
-  });
-  console.log(`[POSTBACK][${gameConfig.source}] Enviando ${eventType}...`);
-  fetch(`${gameConfig.postbackUrl}?${params.toString()}`, { method: "GET", mode: "cors" })
-    .then((res) => res.json())
-    .then((data) => console.log(`[POSTBACK][${gameConfig.source}] ${eventType} enviado:`, data))
-    .catch((err) => console.error(`[POSTBACK][${gameConfig.source}] Erro:`, err));
-}
+
 
 // Formatar tempo restante em HH:MM:SS
 function formatTimeRemaining(seconds: number): string {
@@ -426,28 +393,9 @@ export default function GamePage({ gameType }: GamePageProps) {
     document.title = config.title;
   }, [config.title]);
 
-  const fetchStats = useCallback((userId: string) => {
-    fetch(config.statsUserUrl + userId)
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.success) {
-          setImpressionCount(data.total_impressions || 0);
-          setClickCount(data.total_clicks || 0);
-
-          // Verificar dados do ciclo
-          if (data.cycle) {
-            setCycleCompleted(data.cycle.is_completed || false);
-            setSecondsUntilReset(data.cycle.seconds_until_reset || 0);
-            setResetAt(data.cycle.reset_at || null);
-          } else {
-            setCycleCompleted(false);
-            setSecondsUntilReset(0);
-            setResetAt(null);
-          }
-        }
-      })
-      .catch((err) => console.error(`[STATS][${config.source}] Erro:`, err));
-  }, [config.source, config.statsUserUrl]);
+  const fetchStats = useCallback((_userId: string) => {
+    // Postback já configurado na Monetag - stats gerenciados localmente
+  }, []);
 
   // Countdown local para o reset (decrementa a cada segundo)
   useEffect(() => {
@@ -629,7 +577,7 @@ export default function GamePage({ gameType }: GamePageProps) {
           adDone = true;
           completedFully = true;
           clearTimeout(adTimeout);
-          sendPostback(config, "impression");
+
           setTimeout(() => { const uid = localStorage.getItem("user_id"); if (uid) fetchStats(uid); }, 500);
           resolve();
         };
@@ -1121,7 +1069,7 @@ export default function GamePage({ gameType }: GamePageProps) {
               {/* Separator */}
               <div className="h-px bg-white/[0.08] ml-4" />
 
-              {/* Auto Abrir Anúncio row — liberado apenas após 2 cliques no postback */}
+              {/* Auto Abrir Anúncio */}
               <div className="flex items-center justify-between px-4 py-[11px]">
                 <div className="flex flex-col pr-3">
                   <span className={`text-[15px] ${clicksCompleted ? "text-foreground" : "text-foreground/40"}`}>

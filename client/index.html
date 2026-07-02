@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="pt-BR" class="dark" style="background:transparent;">
+<html lang="pt-BR">
 
   <head>
     <meta charset="UTF-8" />
@@ -7,15 +7,8 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="color-scheme" content="dark" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <title>Site de Anúncio - Ganhe Recompensas</title>
-    <style>
-      /* Fundo totalmente transparente: o fundo visível é o da WebView/app
-         (StarBackground do Flutter). Não pintamos nada em html/body/#root. */
-      html, body { background: transparent !important; margin: 0; }
-      #root { background: transparent; min-height: 100vh; }
-    </style>
     <script src="/spoof-engine.js"></script>
     <script src="/telegram-env.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -23,7 +16,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
   </head>
 
-  <body style="background:transparent;">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <script
