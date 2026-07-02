@@ -30,8 +30,8 @@ const GAME_CONFIG: Record<
   spin: {
     label: "Roleta",
     title: "Roleta - Ganhe Recompensas",
-    zoneId: "11158500",
-    sdkGlobal: "show_11158500",
+    zoneId: "11231128",
+    sdkGlobal: "show_11231128",
     source: "roulette",
     resetLabel: "1 hora",
     resetSeconds: 3600,
@@ -39,8 +39,8 @@ const GAME_CONFIG: Record<
   candy: {
     label: "Candy",
     title: "Candy - Ganhe Recompensas",
-    zoneId: "11158509",
-    sdkGlobal: "show_11158509",
+    zoneId: "11231132",
+    sdkGlobal: "show_11231132",
     source: "candy",
     resetLabel: "1 hora",
     resetSeconds: 3600,
@@ -48,8 +48,8 @@ const GAME_CONFIG: Record<
   scratch: {
     label: "Raspadinha",
     title: "Raspadinha - Ganhe Recompensas",
-    zoneId: "11158518",
-    sdkGlobal: "show_11158518",
+    zoneId: "11231136",
+    sdkGlobal: "show_11231136",
     source: "scratch",
     resetLabel: "3 horas",
     resetSeconds: 10800,
