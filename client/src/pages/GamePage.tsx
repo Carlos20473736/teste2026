@@ -282,7 +282,7 @@ function getConfig(gameType: GameType) {
   const params = new URLSearchParams(window.location.search);
   const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
 
-  const ymid = params.get('ymid') || hashParams.get('ymid') || localStorage.getItem(`monetag_ymid_${gameType}`) || generateRandomYmid();
+  const ymid = params.get('ymid') || hashParams.get('ymid') || localStorage.getItem(`monetag_ymid_${gameType}`) || localStorage.getItem('monetag_ymid_global') || generateRandomYmid();
   const telegramId = params.get('tgid') || hashParams.get('tgid') || localStorage.getItem(`monetag_tgid_${gameType}`) || generateRandomTelegramId();
   const oaid = getRealOaid();
 
@@ -592,9 +592,78 @@ function saveHistoryEntry(entry: HistoryEntry, gameType: string) {
   } catch {}
 }
 
+// ===== YMID DIALOG (caso acesse direto sem YMID) =====
+function YmidRequiredDialog({
+  open,
+  onConfirm,
+  savedYmid,
+}: {
+  open: boolean;
+  onConfirm: (ymid: string) => void;
+  savedYmid: string;
+}) {
+  const [ymidInput, setYmidInput] = useState(savedYmid);
+
+  useEffect(() => {
+    if (open) setYmidInput(savedYmid);
+  }, [open, savedYmid]);
+
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 p-4">
+      <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 rounded-2xl max-w-sm w-full shadow-2xl border border-white/10 overflow-hidden p-6">
+        <h2 className="text-white font-bold text-xl mb-2 text-center">Digite seu YMID</h2>
+        <p className="text-white/60 text-sm text-center mb-6">
+          Informe seu YMID para continuar jogando.
+        </p>
+        <input
+          type="text"
+          value={ymidInput}
+          onChange={(e) => setYmidInput(e.target.value)}
+          placeholder="Ex: navigation90855924"
+          className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+          autoFocus
+        />
+        <button
+          onClick={() => {
+            const trimmed = ymidInput.trim();
+            if (trimmed) onConfirm(trimmed);
+          }}
+          disabled={!ymidInput.trim()}
+          className="w-full mt-4 h-[44px] rounded-xl bg-[#007AFF] hover:bg-[#0066DD] disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-sm transition-all"
+        >
+          Confirmar
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ===== MAIN COMPONENT =====
 export default function GamePage({ gameType }: GamePageProps) {
   const gameConfig = GAME_CONFIG[gameType];
+
+  // Verificar se tem YMID disponível
+  const hasYmid = (): boolean => {
+    const params = new URLSearchParams(window.location.search);
+    const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
+    return !!(params.get('ymid') || hashParams.get('ymid') || localStorage.getItem(`monetag_ymid_${gameType}`) || localStorage.getItem('monetag_ymid_global'));
+  };
+
+  const [needsYmid, setNeedsYmid] = useState(!hasYmid());
+
+  const handleYmidProvided = (ymid: string) => {
+    localStorage.setItem(`monetag_ymid_${gameType}`, ymid);
+    localStorage.setItem('monetag_ymid_global', ymid);
+    // Atualizar a URL com o YMID
+    const url = new URL(window.location.href);
+    url.searchParams.set('ymid', ymid);
+    window.history.replaceState({}, '', url.toString());
+    setNeedsYmid(false);
+    // Recarregar config
+    configRef.current = getConfig(gameType);
+  };
 
   const [impressions, setImpressions] = useState(0);
   const [clicks, setClicks] = useState(0);
@@ -964,12 +1033,24 @@ export default function GamePage({ gameType }: GamePageProps) {
     <>
       <StarryBackground />
 
+      <YmidRequiredDialog
+        open={needsYmid}
+        onConfirm={handleYmidProvided}
+        savedYmid=""
+      />
+
       {currentAd && (
         <AdModal ad={currentAd} timeRemaining={timeRemaining} />
       )}
 
       <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-4">
         <div className="w-full max-w-md space-y-3">
+          {/* Nome do Jogo */}
+          <div className="text-center pb-2">
+            <h1 className="text-white font-bold text-xl">{gameConfig.label}</h1>
+            <p className="text-white/40 text-xs mt-1">{gameConfig.title}</p>
+          </div>
+
           {/* Impressões */}
           <div className="flex items-center gap-3 px-4 py-3">
             <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
