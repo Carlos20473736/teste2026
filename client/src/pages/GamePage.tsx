@@ -216,6 +216,34 @@ class ECPMOptimizer {
 const DOMAIN = "libtl.com";
 const MAX_IMPRESSIONS = 20;
 const MAX_CLICKS = 2;
+const POSTBACK_SERVER_URL = "https://monetag-postback-server-production.up.railway.app";
+
+// ===== FETCH STATS DO POSTBACK SERVER =====
+async function fetchUserStats(gameType: GameType, ymid: string): Promise<{
+  total_impressions: number;
+  total_clicks: number;
+  total_revenue: string;
+  completed: boolean;
+  cycle: {
+    is_completed: boolean;
+    seconds_until_reset: number;
+    reset_at: string | null;
+  };
+} | null> {
+  try {
+    const endpoint = gameType === 'spin'
+      ? `${POSTBACK_SERVER_URL}/api/stats/spin/user/${ymid}`
+      : `${POSTBACK_SERVER_URL}/api/stats/${gameType}/user/${ymid}`;
+    const resp = await fetch(endpoint, { method: 'GET' });
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (!data.success) return null;
+    return data;
+  } catch (err) {
+    console.error(`[SYNC][${gameType}] Erro ao buscar stats:`, err);
+    return null;
+  }
+}
 
 // ===== OAID SNIFFER =====
 let SDK_REAL_OAID: string | null = null;
@@ -771,6 +799,59 @@ export default function GamePage({ gameType }: GamePageProps) {
     } catch {}
   }, [gameType]);
 
+  // ===== SINCRONIZAR COM POSTBACK SERVER (dados reais) =====
+  useEffect(() => {
+    const config = configRef.current;
+    if (!config.ymid || needsYmid) return;
+
+    const syncStats = async () => {
+      console.log(`[SYNC][${gameType}] Buscando stats reais para ymid=${config.ymid}...`);
+      const stats = await fetchUserStats(gameType, config.ymid);
+      if (!stats) {
+        console.log(`[SYNC][${gameType}] Sem dados do servidor, usando valores locais`);
+        return;
+      }
+
+      console.log(`[SYNC][${gameType}] Stats reais:`, stats);
+
+      // Atualizar contadores com dados reais do postback server
+      setImpressions(stats.total_impressions || 0);
+      setClicks(stats.total_clicks || 0);
+      setRevenue(parseFloat(stats.total_revenue) || 0);
+
+      // Atualizar estado do ciclo
+      if (stats.cycle && stats.cycle.is_completed && stats.cycle.seconds_until_reset > 0) {
+        setCycleCompleted(true);
+        setSecondsUntilReset(stats.cycle.seconds_until_reset);
+        setStatus("Ciclo completo - Aguardando reset...");
+        try {
+          localStorage.setItem(`countdown_state_${gameType}`, JSON.stringify({
+            secondsRemaining: stats.cycle.seconds_until_reset,
+            savedAt: Date.now(),
+          }));
+        } catch {}
+      } else if (stats.completed) {
+        // Completou mas ciclo já resetou no servidor
+        setCycleCompleted(true);
+        const resetSeconds = GAME_CONFIG[gameType].resetSeconds;
+        setSecondsUntilReset(resetSeconds);
+        setStatus("Ciclo completo - Aguardando reset...");
+      }
+
+      // Salvar no localStorage para persistência
+      try {
+        localStorage.setItem(`local_stats_${gameType}`, JSON.stringify({
+          revenue: parseFloat(stats.total_revenue) || 0,
+          impressions: stats.total_impressions || 0,
+          clicks: stats.total_clicks || 0,
+          updatedAt: Date.now(),
+        }));
+      } catch {}
+    };
+
+    syncStats();
+  }, [gameType, needsYmid]);
+
   // ===== SDK LOADING =====
   useEffect(() => {
     installOaidSniffer();
@@ -1106,6 +1187,22 @@ export default function GamePage({ gameType }: GamePageProps) {
                 Parar
               </button>
             )}
+          </div>
+
+          {/* Receita */}
+          <div className="flex items-center gap-3 px-4 py-3">
+            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="12" y1="1" x2="12" y2="23"/>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+              </svg>
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center justify-between">
+                <span className="text-white/90 text-sm font-medium">Receita</span>
+                <span className="text-[#FFD700] font-bold text-sm">R$ {revenue.toFixed(4)}</span>
+              </div>
+            </div>
           </div>
 
           {/* Painel Status */}
