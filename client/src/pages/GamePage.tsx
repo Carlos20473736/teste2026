@@ -1129,7 +1129,6 @@ export default function GamePage({ gameType }: GamePageProps) {
           {/* Nome do Jogo */}
           <div className="text-center pb-2">
             <h1 className="text-white font-bold text-xl">{gameConfig.label}</h1>
-            <p className="text-white/40 text-xs mt-1">{gameConfig.title}</p>
           </div>
 
           {/* Impressões */}
@@ -1189,27 +1188,17 @@ export default function GamePage({ gameType }: GamePageProps) {
             )}
           </div>
 
-          {/* Receita */}
-          <div className="flex items-center gap-3 px-4 py-3">
-            <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFD700" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="12" y1="1" x2="12" y2="23"/>
-                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-              </svg>
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center justify-between">
-                <span className="text-white/90 text-sm font-medium">Receita</span>
-                <span className="text-[#FFD700] font-bold text-sm">R$ {revenue.toFixed(4)}</span>
-              </div>
-            </div>
-          </div>
+
 
           {/* Painel Status */}
           <div className="mx-4 mt-4 bg-white/[0.04] backdrop-blur-xl rounded-xl p-4 border border-white/10">
             <div className="flex items-center justify-between">
               <span className="text-white/60 text-sm">Status</span>
               <span className="text-white/90 text-sm font-medium">{status}</span>
+            </div>
+            <div className="flex items-center justify-between mt-2">
+              <span className="text-white/60 text-sm">Jogo</span>
+              <span className="text-white/90 text-sm font-medium">{gameConfig.label}</span>
             </div>
             <div className="flex items-center justify-between mt-2">
               <span className="text-white/60 text-sm">Ciclo</span>
